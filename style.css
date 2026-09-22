@@ -212,36 +212,132 @@ video.video-scale-cinema,
   line-height: 1.2 !important;
 }
 
-/* Floating on-player aspect button (Visible in Fullscreen & Landscape) */
-.plyr__floating-aspect-btn {
+/* Floating Stage Top Bar inside Plyr (Fullscreen & Landscape & Desktop) */
+.plyr__stage-top-bar {
   position: absolute !important;
-  top: 14px !important;
-  right: 14px !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
   z-index: 45 !important;
-  display: inline-flex !important;
+  display: flex !important;
   align-items: center !important;
-  gap: 6px !important;
-  padding: 6px 11px !important;
-  border-radius: 12px !important;
-  background: rgba(10, 10, 15, 0.78) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.22) !important;
-  color: #f1f5f9 !important;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  cursor: pointer !important;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55) !important;
-  transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, border-color 0.2s ease !important;
+  justify-content: space-between !important;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 12px max(16px, env(safe-area-inset-left)) !important;
+  background: linear-gradient(to bottom, rgba(5, 7, 12, 0.92) 0%, rgba(5, 7, 12, 0.45) 60%, transparent 100%) !important;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: auto !important;
   user-select: none !important;
 }
-.plyr__floating-aspect-btn:hover {
-  background: rgba(10, 10, 15, 0.95) !important;
-  border-color: rgba(0, 240, 255, 0.6) !important;
-  color: #00F0FF !important;
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35) !important;
+
+.plyr--hide-controls .plyr__stage-top-bar {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-12px) !important;
 }
-/* On-Stage Quick Stretch/Crop Button Auto-Hide (Hides after 3s of idle screen/touch) */
+
+.plyr:not(.plyr--hide-controls) .plyr__stage-top-bar {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+.plyr__stage-top-left {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+.plyr__stage-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 6px 12px !important;
+  border-radius: 9999px !important;
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  color: #f8fafc !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  touch-action: manipulation !important;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.plyr__stage-btn:hover {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: rgba(0, 240, 255, 0.55) !important;
+  color: #00F0FF !important;
+  box-shadow: 0 0 14px rgba(0, 240, 255, 0.3) !important;
+}
+
+.plyr__stage-btn:active {
+  transform: scale(0.93) !important;
+}
+
+.plyr__stage-back-btn {
+  padding: 7px 12px !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+.plyr__stage-back-btn:hover {
+  border-color: #00F0FF !important;
+  background: rgba(0, 240, 255, 0.18) !important;
+  color: #00F0FF !important;
+}
+
+.plyr__stage-info {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+
+.plyr__stage-show-title {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.plyr__stage-ep-title {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #00F0FF !important;
+  line-height: 1.2 !important;
+  opacity: 0.92 !important;
+}
+
+.plyr__stage-top-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-shrink: 0 !important;
+  margin-left: 10px !important;
+}
+
+.plyr__stage-boost-btn.is-boosted {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: rgba(245, 158, 11, 0.65) !important;
+  color: #fbbf24 !important;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35) !important;
+}
+
+.plyr__stage-aspect-btn {
+  background: rgba(0, 240, 255, 0.12) !important;
+  border-color: rgba(0, 240, 255, 0.45) !important;
+  color: #00F0FF !important;
+}
+
+/* On-Stage Quick Stretch/Crop Button Auto-Hide */
 #ytStageAspectBtn {
   transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s ease !important;
   opacity: 1;
@@ -254,24 +350,6 @@ video.video-scale-cinema,
   visibility: hidden !important;
   pointer-events: none !important;
   transform: translateY(-8px) scale(0.92) !important;
-}
-
-.plyr__floating-aspect-btn.is-hidden {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  transform: translateY(-8px) scale(0.92) !important;
-}
-
-.plyr--hide-controls .plyr__floating-aspect-btn {
-  opacity: 0 !important;
-  pointer-events: none !important;
-  transform: translateY(-8px) !important;
-}
-.plyr:not(.plyr--hide-controls) .plyr__floating-aspect-btn {
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  transform: translateY(0) !important;
 }
 
 /* Video Stage Aspect HUD notification */
@@ -293,10 +371,11 @@ video.video-scale-cinema,
 }
 
 /* Mobile & Tablet Landscape Optimization ("landscape jab tab bhi") */
-@media (orientation: landscape) and (max-height: 580px) {
+@media (orientation: landscape) and (max-height: 620px) {
   #showPlayerPage {
     padding: 0 !important;
     margin: 0 !important;
+    background: #000000 !important;
   }
   #showPlayerPage > div {
     max-width: 100% !important;
@@ -311,6 +390,8 @@ video.video-scale-cinema,
     width: 100vw !important;
     max-width: 100vw !important;
     aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   #ytPlayerStage .plyr {
     border-radius: 0 !important;
@@ -322,14 +403,112 @@ video.video-scale-cinema,
     width: 100vw !important;
     padding-bottom: 0 !important;
   }
-  .plyr__floating-aspect-btn {
-    top: 10px !important;
-    right: 10px !important;
-    padding: 7px 12px !important;
-    background: rgba(10, 10, 15, 0.88) !important;
-    border-color: rgba(0, 240, 255, 0.45) !important;
-    box-shadow: 0 0 14px rgba(0, 240, 255, 0.28) !important;
+  .plyr__controls {
+    padding: 8px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)) !important;
+    gap: 8px !important;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.96) 0%, rgba(0, 0, 0, 0.65) 60%, transparent 100%) !important;
+    border-radius: 0 !important;
+    border: none !important;
   }
+  .plyr__control {
+    min-width: 40px !important;
+    min-height: 40px !important;
+    padding: 7px 10px !important;
+    border-radius: 10px !important;
+    touch-action: manipulation !important;
+  }
+  .plyr__control svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .plyr__time {
+    font-size: 11px !important;
+    padding: 0 4px !important;
+  }
+  .plyr__stage-top-bar {
+    padding: max(10px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) 8px max(20px, env(safe-area-inset-left)) !important;
+  }
+  .plyr__stage-btn {
+    padding: 5px 11px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* Polished Plyr Bottom Controls and Buttons */
+.plyr__controls {
+  gap: 6px !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  transition: opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.plyr__control {
+  border-radius: 10px !important;
+  touch-action: manipulation !important;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.08s ease !important;
+}
+
+.plyr__control:hover {
+  background: rgba(0, 240, 255, 0.18) !important;
+  color: #00F0FF !important;
+}
+
+.plyr__control:active {
+  transform: scale(0.92) !important;
+}
+
+.plyr__control--aspect-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 10px !important;
+  gap: 5px !important;
+  border-radius: 9999px !important;
+  background: rgba(0, 240, 255, 0.1) !important;
+  border: 1px solid rgba(0, 240, 255, 0.35) !important;
+}
+.plyr__control--aspect-toggle:hover {
+  background: rgba(0, 240, 255, 0.22) !important;
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4) !important;
+}
+
+.plyr__control--volume-boost {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 10px !important;
+  gap: 5px !important;
+  border-radius: 9999px !important;
+  background: rgba(245, 158, 11, 0.12) !important;
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+}
+.plyr__control--volume-boost:hover {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.4) !important;
+}
+.plyr__control--volume-boost.is-boosted {
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #f59e0b !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.45) !important;
+}
+
+/* Fast Click Responsiveness (Zero delay on mobile touch & click) */
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent !important;
+}
+button, a, [role="button"], input, select, textarea,
+.cursor-pointer, .show-card, .tilt-card, .plyr__control,
+.category-pill, .episode-card, .neon-pill-btn {
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+button:active, [role="button"]:active, .cursor-pointer:active,
+.show-card:active, .episode-card:active, .plyr__control:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.05s ease-out !important;
 }
 
 .plyr__control--overlaid {

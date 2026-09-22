@@ -1144,14 +1144,14 @@ export function filterCategoryView(selectedCategory) {
     if (dedicatedCategoryView) dedicatedCategoryView.classList.add('hidden');
     if (homeView) {
       homeView.classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo(0, 0);
     }
   } else {
     if (homeView) homeView.classList.add('hidden');
     if (dedicatedCategoryView) {
       dedicatedCategoryView.classList.remove('hidden');
       renderDedicatedCategoryGrid(selectedCategory);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo(0, 0);
     }
   }
 
@@ -1338,7 +1338,7 @@ export function openShowPlayerPage(showKeyOrTitle, episodeIndex = 0, resumeTime 
 
   if (showPlayerPage) {
     showPlayerPage.classList.remove('hidden');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
     if (window.initMainPlayerControlsAutoHide) window.initMainPlayerControlsAutoHide();
     if (window.showMainPlayerControls) window.showMainPlayerControls();
     if (window.initStageAspectAutoHide) window.initStageAspectAutoHide();
@@ -1441,6 +1441,21 @@ export function loadActiveYtEpisode(index, resumeTime = 0) {
     } else {
       const sNum = episode.season || 1;
       curEpTitle.innerText = `Season ${sNum} • Episode ${episode.episodeNumber}${episode.episodeTitle && !episode.episodeTitle.startsWith('Episode') ? ' - ' + episode.episodeTitle : ''}`;
+    }
+  }
+
+  // Update on-stage player title overlay for Fullscreen & Landscape mode
+  const stageShowTitle = document.getElementById('plyrStageShowTitle');
+  const stageEpTitle = document.getElementById('plyrStageEpTitle');
+  if (stageShowTitle) {
+    stageShowTitle.textContent = cleanSeriesTitle(currentSelectedShow.title);
+  }
+  if (stageEpTitle) {
+    if (currentSelectedShow.category === 'Movie' && currentSelectedShow.episodes.length === 1) {
+      stageEpTitle.textContent = 'Feature Film • 4K Master';
+    } else {
+      const sNum = episode.season || 1;
+      stageEpTitle.textContent = `S${sNum} • Ep ${episode.episodeNumber}${episode.episodeTitle && !episode.episodeTitle.startsWith('Episode') ? ': ' + episode.episodeTitle : ''}`;
     }
   }
 
@@ -1815,7 +1830,7 @@ export function switchYtEpisode(index) {
 
   const stage = document.getElementById('ytPlayerStage');
   if (stage) {
-    stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    stage.scrollIntoView({ behavior: 'auto', block: 'nearest' });
   }
 }
 

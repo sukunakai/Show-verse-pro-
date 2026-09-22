@@ -549,7 +549,7 @@ export function renderCommentsUI() {
       </div>
     `;
     if (window.safeCreateIcons) {
-      window.safeCreateIcons(list);
+      window.safeCreateIcons(container);
     } else if (window.lucide) {
       window.lucide.createIcons();
     }
@@ -666,7 +666,7 @@ export function renderCommentsUI() {
   }).join('');
 
   if (window.safeCreateIcons) {
-    window.safeCreateIcons(list);
+    window.safeCreateIcons(container);
   } else if (window.lucide) {
     window.lucide.createIcons();
   }

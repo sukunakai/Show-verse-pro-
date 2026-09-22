@@ -302,15 +302,8 @@ export function showAspectHUD(mode) {
     }
 
     hud.classList.remove('is-visible');
-    void hud.offsetWidth; // Force CSS reflow to re-trigger transition
     hud.classList.add('is-visible');
   });
-
-  if (window.safeCreateIcons) {
-    window.safeCreateIcons();
-  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
-    window.lucide.createIcons();
-  }
 
   if (aspectHudTimer) clearTimeout(aspectHudTimer);
   aspectHudTimer = setTimeout(() => {
@@ -346,7 +339,7 @@ export function updateAspectUI() {
   });
 
   // 5. Plyr On-Stage Floating aspect button text (visible in landscape & fullscreen)
-  const floatBadges = document.querySelectorAll('.plyr__floating-aspect-text, #plyrFloatingAspectText');
+  const floatBadges = document.querySelectorAll('.plyr__floating-aspect-text, #plyrFloatingAspectText, #plyrStageAspectText');
   floatBadges.forEach(b => {
     b.textContent = config.short;
   });
@@ -372,12 +365,6 @@ export function updateAspectUI() {
       }
     }
   });
-
-  if (window.safeCreateIcons) {
-    window.safeCreateIcons();
-  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
-    window.lucide.createIcons();
-  }
 }
 
 export function isLandscapeMode() {
@@ -439,26 +426,82 @@ export function injectPlyrAspectControls(plyr) {
     }
   }
 
-  // 2. Inject On-Stage Floating Aspect Button into Plyr container (Visible in Fullscreen & Landscape!)
-  if (container && !container.querySelector('.plyr__floating-aspect-btn')) {
-    const floatBtn = document.createElement('button');
-    floatBtn.type = 'button';
-    floatBtn.className = 'plyr__floating-aspect-btn';
-    floatBtn.setAttribute('title', 'Cycle Stretch & Crop (Fit, Stretch, Crop, Cinema) - Shortcut C');
-    floatBtn.innerHTML = `
-      <svg class="w-3.5 h-3.5 text-brand-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-        <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"></path>
-        <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"></path>
-      </svg>
-      <span class="plyr__floating-aspect-text font-mono text-[10px] uppercase font-bold text-white tracking-wide" id="plyrFloatingAspectText">${config.short}</span>
+  // 2. Inject On-Stage Floating Top Bar with Back, Title, 200% Audio Boost, and Aspect Scaling
+  if (container && !container.querySelector('.plyr__stage-top-bar')) {
+    const topBar = document.createElement('div');
+    topBar.className = 'plyr__stage-top-bar';
+    topBar.innerHTML = `
+      <div class="plyr__stage-top-left">
+        <button type="button" class="plyr__stage-btn plyr__stage-back-btn" title="Back to Browse (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          <span class="plyr__stage-back-text">Back</span>
+        </button>
+        <div class="plyr__stage-info truncate">
+          <span class="plyr__stage-show-title font-black text-white truncate" id="plyrStageShowTitle"></span>
+          <span class="plyr__stage-ep-title text-brand-cyan font-bold truncate" id="plyrStageEpTitle"></span>
+        </div>
+      </div>
+      <div class="plyr__stage-top-right">
+        <!-- 200% Audio Boost Button -->
+        <button type="button" class="plyr__stage-btn plyr__stage-boost-btn" title="Toggle 200% Super Audio Boost (Shortcut B)">
+          <svg class="w-3.5 h-3.5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span id="plyrStageBoostText" class="font-mono text-[10px] font-black uppercase tracking-wider text-amber-300">200%</span>
+        </button>
+        <!-- Aspect Scaling Button -->
+        <button type="button" class="plyr__stage-btn plyr__stage-aspect-btn" title="Cycle Aspect Ratio (Fit, Stretch, Crop, Cinema) - Shortcut C">
+          <svg class="w-3.5 h-3.5 text-brand-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
+            <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"></path>
+            <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"></path>
+          </svg>
+          <span id="plyrStageAspectText" class="font-mono text-[10px] font-black uppercase tracking-wider text-brand-cyan">${config.short}</span>
+        </button>
+      </div>
     `;
 
-    floatBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      cycleVideoAspectMode(e);
-    });
+    const backBtn = topBar.querySelector('.plyr__stage-back-btn');
+    if (backBtn) {
+      backBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof window.closeShowPlayerPage === 'function') {
+          window.closeShowPlayerPage();
+        }
+      });
+    }
 
-    container.appendChild(floatBtn);
+    const boostBtn = topBar.querySelector('.plyr__stage-boost-btn');
+    if (boostBtn) {
+      boostBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggle200PercentBoost();
+      });
+    }
+
+    const aspectBtn = topBar.querySelector('.plyr__stage-aspect-btn');
+    if (aspectBtn) {
+      aspectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cycleVideoAspectMode(e);
+      });
+    }
+
+    container.appendChild(topBar);
+
+    // Initial titles sync if active show exists
+    if (window.currentSelectedShow) {
+      const stageShow = topBar.querySelector('#plyrStageShowTitle');
+      const stageEp = topBar.querySelector('#plyrStageEpTitle');
+      if (stageShow) stageShow.textContent = window.currentSelectedShow.title || '';
+      if (stageEp && window.currentSelectedShow.episodes && typeof window.currentSelectedEpisodeIndex === 'number') {
+        const ep = window.currentSelectedShow.episodes[window.currentSelectedEpisodeIndex];
+        if (ep) {
+          stageEp.textContent = `S${ep.season || 1} • Ep ${ep.episodeNumber}${ep.episodeTitle && !ep.episodeTitle.startsWith('Episode') ? ': ' + ep.episodeTitle : ''}`;
+        }
+      }
+    }
   }
 
   // 3. Inject Video Aspect HUD inside plyr container (so HUD flashes in Fullscreen & Landscape!)
@@ -785,8 +828,18 @@ export function updateVolumeBoostUI() {
     }
   });
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
-    window.lucide.createIcons();
+  // 4. On-stage player top bar boost button
+  const stageBoostText = document.getElementById('plyrStageBoostText');
+  if (stageBoostText) {
+    stageBoostText.textContent = is200 ? '200% 🔥' : isBoost ? `${level}% ⚡` : '200%';
+    const stageBoostBtn = stageBoostText.closest('.plyr__stage-boost-btn');
+    if (stageBoostBtn) {
+      if (isBoost) {
+        stageBoostBtn.classList.add('is-boosted');
+      } else {
+        stageBoostBtn.classList.remove('is-boosted');
+      }
+    }
   }
 }
 

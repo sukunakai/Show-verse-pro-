@@ -31,9 +31,20 @@ const iconTargets = new Set();
 
 export function safeCreateIcons(scopeElement) {
   if (typeof window === 'undefined' || !window.lucide || typeof window.lucide.createIcons !== 'function') return;
+
+  // Fast check: avoid processing if target has no unrendered <i> or <span> icons
   if (scopeElement && scopeElement.nodeType === 1) {
+    const hasIcons = scopeElement.matches && (scopeElement.matches('i[data-lucide], span[data-lucide]')) 
+      ? true 
+      : Boolean(scopeElement.querySelector('i[data-lucide], span[data-lucide]'));
+    if (!hasIcons) return;
     iconTargets.add(scopeElement);
+  } else {
+    // If scanning document, check if any unrendered icons actually exist in DOM
+    const hasUnrendered = document.querySelector('i[data-lucide], span[data-lucide]');
+    if (!hasUnrendered) return;
   }
+
   if (pendingIconTimer) return;
   pendingIconTimer = requestAnimationFrame(() => {
     pendingIconTimer = null;
@@ -41,15 +52,25 @@ export function safeCreateIcons(scopeElement) {
       if (iconTargets.size > 0) {
         iconTargets.forEach(el => {
           if (el && el.isConnected) {
-            try { window.lucide.createIcons({ root: el }); } catch (e) {}
+            try { 
+              if (el.querySelector('i[data-lucide], span[data-lucide]') || (el.matches && el.matches('i[data-lucide], span[data-lucide]'))) {
+                window.lucide.createIcons({ root: el }); 
+              }
+            } catch (e) {}
           }
         });
         iconTargets.clear();
       } else {
-        window.lucide.createIcons();
+        if (document.querySelector('i[data-lucide], span[data-lucide]')) {
+          window.lucide.createIcons();
+        }
       }
     } catch (e) {
-      try { window.lucide.createIcons(); } catch (err) {}
+      try { 
+        if (document.querySelector('i[data-lucide], span[data-lucide]')) {
+          window.lucide.createIcons(); 
+        }
+      } catch (err) {}
     }
   });
 }
