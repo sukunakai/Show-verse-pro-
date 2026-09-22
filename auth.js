@@ -63,8 +63,40 @@ export function updateAuthUI(user) {
   const meUserAuthPanel = document.getElementById('meUserAuthPanel');
   const navAvatar = document.getElementById('navAvatar');
   const navUsername = document.getElementById('navUsername');
+  const navAdminBtn = document.getElementById('navAdminBtn');
+  const bottomNavAdmin = document.getElementById('bottomNavAdmin');
 
   const isAdmin = isAuthorizedAdmin(user);
+
+  // STRICT GLOBAL VISIBILITY: Admin options are HIDDEN ALWAYS, unhidden ONLY for SECRET_ADMIN_EMAIL
+  if (navAdminBtn) {
+    if (isAdmin) {
+      navAdminBtn.style.display = 'flex';
+      navAdminBtn.classList.remove('hidden');
+    } else {
+      navAdminBtn.style.display = 'none';
+      navAdminBtn.classList.add('hidden');
+    }
+  }
+
+  if (bottomNavAdmin) {
+    if (isAdmin) {
+      bottomNavAdmin.style.display = 'flex';
+      bottomNavAdmin.classList.remove('hidden');
+    } else {
+      bottomNavAdmin.style.display = 'none';
+      bottomNavAdmin.classList.add('hidden');
+    }
+  }
+
+  // If not admin, ensure Creator Studio modal is immediately closed if open
+  if (!isAdmin) {
+    const creatorStudioModal = document.getElementById('creatorStudioModal');
+    if (creatorStudioModal && !creatorStudioModal.classList.contains('hidden')) {
+      creatorStudioModal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
 
   if (user) {
     // ---------------- AUTHENTICATED STATE ----------------
@@ -356,26 +388,89 @@ export async function handleSignOut() {
 }
 
 /**
- * Guarded opener for Creator Studio. Strict admin email check.
+ * Full Tab opener for Creator Studio. Strict admin email check: only opens for SECRET_ADMIN_EMAIL.
  */
 export function openCreatorStudio() {
-  if (!isAuthorizedAdmin(currentUser)) {
+  const isAdmin = isAuthorizedAdmin(currentUser);
+  const modal = document.getElementById('creatorStudioModal');
+
+  if (!isAdmin) {
+    if (modal) modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     if (window.showToast) {
-      window.showToast("Access Denied: Creator Studio is restricted to authorized admin.");
+      window.showToast("Admin access restricted. Please sign in with vimleshkumar901559@gmail.com");
     }
     return;
   }
-  const modal = document.getElementById('creatorStudioModal');
-  if (modal) modal.classList.remove('hidden');
+
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+
+  const promptEl = document.getElementById('adminStudioAuthPrompt');
+  const dashboardEl = document.getElementById('adminStudioDashboardView');
+
+  if (promptEl) promptEl.classList.add('hidden');
+  if (dashboardEl) dashboardEl.classList.remove('hidden');
+
+  if (typeof window.switchAdminStudioTab === 'function') {
+    window.switchAdminStudioTab('manage');
+  }
   if (typeof window.handleCategoryChange === 'function') window.handleCategoryChange();
   if (typeof window.renderStagedBatchQueue === 'function') window.renderStagedBatchQueue();
   if (typeof window.initPublishedContentManager === 'function') window.initPublishedContentManager();
   if (typeof window.fetchAndDisplayManageContent === 'function') window.fetchAndDisplayManageContent();
+
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(modal);
+  } else if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 export function closeCreatorStudio() {
   const modal = document.getElementById('creatorStudioModal');
   if (modal) modal.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+}
+
+export async function handleAdminTabLogin(e) {
+  if (e) e.preventDefault();
+  const emailInput = document.getElementById('adminTabLoginEmail');
+  const passInput = document.getElementById('adminTabLoginPassword');
+  const btn = document.getElementById('btnAdminTabLogin');
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passInput ? passInput.value : '';
+
+  if (!email || !password) {
+    if (window.showToast) window.showToast('Please enter both admin email and password');
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>Verifying Admin...</span>`;
+    if (window.safeCreateIcons) window.safeCreateIcons(btn);
+  }
+
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    if (isAuthorizedAdmin(cred.user)) {
+      if (window.showToast) window.showToast(`Master Admin verified! Welcome ${cred.user.email}`);
+      openCreatorStudio();
+    } else {
+      if (window.showToast) window.showToast(`Signed in, but ${cred.user.email} is not authorized for Creator Studio.`);
+    }
+  } catch (err) {
+    console.error("Admin sign in error:", err);
+    if (window.showToast) window.showToast(`Sign in error: ${err.message || String(err)}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="lock" class="w-4 h-4 fill-black"></i> <span>Sign In as Admin</span>`;
+      if (window.safeCreateIcons) window.safeCreateIcons(btn);
+    }
+  }
 }
 
 // Attach onAuthStateChanged listener to track real-time Firebase Auth status
@@ -383,6 +478,10 @@ if (auth) {
   try {
     onAuthStateChanged(auth, (user) => {
       updateAuthUI(user);
+      const modal = document.getElementById('creatorStudioModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        openCreatorStudio();
+      }
     });
   } catch (e) {
     console.warn("onAuthStateChanged setup warning:", e);
@@ -400,6 +499,7 @@ if (typeof window !== "undefined") {
   window.handleSignOut = handleSignOut;
   window.openCreatorStudio = openCreatorStudio;
   window.closeCreatorStudio = closeCreatorStudio;
+  window.handleAdminTabLogin = handleAdminTabLogin;
   window.isAuthorizedAdmin = isAuthorizedAdmin;
   window.updateAuthUI = updateAuthUI;
   window.SECRET_ADMIN_EMAIL = SECRET_ADMIN_EMAIL;

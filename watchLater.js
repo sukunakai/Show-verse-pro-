@@ -160,7 +160,9 @@ export function updateWatchLaterButtonUI(show) {
     }
   }
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons();
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 }
@@ -516,7 +518,9 @@ export function renderWatchLaterModal() {
     }).join('');
   }
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(container);
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 }
@@ -559,7 +563,9 @@ export function renderMeWatchLater() {
     }).join('');
   }
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(container);
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 }
@@ -639,7 +645,9 @@ export function renderWatchLaterHomeShelf() {
     `;
   }).join('');
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(row);
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 }

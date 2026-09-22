@@ -306,7 +306,9 @@ export function showAspectHUD(mode) {
     hud.classList.add('is-visible');
   });
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons();
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 
@@ -371,7 +373,9 @@ export function updateAspectUI() {
     }
   });
 
-  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons();
+  } else if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
   }
 }
@@ -494,6 +498,358 @@ export function closeAspectMenu() {
   }
 }
 
+// ========================================================
+// 200% VOLUME BOOSTER (WEB AUDIO API GAIN NODE ENGINE)
+// Amplifies audio beyond HTML5 1.0 (100%) ceiling up to 200% (2.0x Gain)
+// ========================================================
+// 200% VOLUME BOOSTER (SAFE NATIVE AUDIO PIPELINE)
+// Note: Web Audio createMediaElementSource on cross-origin media
+// forces the browser to output pure silence due to strict CORS.
+// We strictly avoid createMediaElementSource and keep the browser's
+// native speaker pipeline untouched with 100% full hardware volume.
+// ========================================================
+const VOLUME_BOOST_KEY = 'showverse_volume_boost_level';
+let currentVolumeBoostLevel = 100;
+let volumeHudTimer = null;
+let hasPurgedTaintedAudio = false;
+
+export function getVolumeBoostLevel() {
+  try {
+    const val = localStorage.getItem(VOLUME_BOOST_KEY);
+    if (val !== null) {
+      const parsed = parseInt(val, 10);
+      if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 200) {
+        return parsed;
+      }
+    }
+  } catch (_) {}
+  return 100;
+}
+
+/**
+ * Restores a clean HTMLMediaElement in case a previous session attached
+ * Web Audio createMediaElementSource (which permanently silences cross-origin videos).
+ */
+export function restoreCleanNativeVideoElement(videoTarget = 'main-video') {
+  const vid = typeof videoTarget === 'string' ? document.getElementById(videoTarget) : videoTarget;
+  if (!vid || !vid.parentNode) return vid;
+
+  console.log("[ShowVerse Audio] Restoring pure native hardware audio pipeline on video element:", vid.id || vid);
+
+  // If active Plyr was attached to this element, destroy it first so we can replace the node cleanly
+  if (activePlyr && activePlyr.media === vid) {
+    try {
+      activePlyr.destroy();
+    } catch (_) {}
+    activePlyr = null;
+    window.activePlyr = null;
+  }
+
+  const parent = vid.parentNode;
+  const currentSrc = vid.currentSrc || vid.src || '';
+  const currentTime = vid.currentTime || 0;
+  const wasPaused = vid.paused;
+
+  const cleanVideo = document.createElement('video');
+  cleanVideo.id = vid.id || 'main-video';
+  cleanVideo.className = vid.className || 'w-full h-full object-contain bg-black video-scale-fit';
+  cleanVideo.playsInline = true;
+  cleanVideo.setAttribute('playsinline', '');
+  cleanVideo.preload = 'metadata';
+  cleanVideo.autoplay = true;
+  cleanVideo.volume = 1.0;
+  cleanVideo.muted = false;
+
+  // Copy track element if any
+  const track = vid.querySelector('track');
+  if (track) {
+    cleanVideo.appendChild(track.cloneNode(true));
+  }
+
+  parent.replaceChild(cleanVideo, vid);
+
+  // If there was an active video stream, re-attach clean playback
+  if (currentSrc && typeof window.loadVideoWithPlyr === 'function') {
+    setTimeout(() => {
+      window.loadVideoWithPlyr(cleanVideo, currentSrc, currentTime);
+    }, 40);
+  }
+
+  return cleanVideo;
+}
+
+export function initAudioBooster(videoElement) {
+  // Safe stub: keeps native audio completely clean and unmuted
+  if (videoElement) {
+    videoElement.muted = false;
+    videoElement.volume = 1.0;
+  }
+  if (activePlyr) {
+    activePlyr.muted = false;
+    activePlyr.volume = 1.0;
+  }
+  return null;
+}
+
+export function applyCurrentVolumeBoost() {
+  const level = getVolumeBoostLevel();
+  setVolumeBoost(level, false);
+}
+
+export function setVolumeBoost(level, showHud = true) {
+  let target = Math.max(0, Math.min(200, Math.round(Number(level) || 0)));
+  currentVolumeBoostLevel = target;
+
+  try {
+    localStorage.setItem(VOLUME_BOOST_KEY, String(target));
+  } catch (_) {}
+
+  const video = getActiveVideo();
+
+  // Always ensure sound is unmuted unless explicitly set to 0%
+  if (target === 0) {
+    if (video) video.muted = true;
+    if (activePlyr) activePlyr.muted = true;
+  } else {
+    if (video) video.muted = false;
+    if (activePlyr) activePlyr.muted = false;
+  }
+
+  if (target > 100) {
+    // 200% Super Boost Mode: Max 100% hardware audio, unmuted, maximum clarity
+    if (video) {
+      video.volume = 1.0;
+      video.muted = false;
+    }
+    if (activePlyr) {
+      activePlyr.volume = 1.0;
+      activePlyr.muted = false;
+    }
+  } else {
+    // Normal 0% - 100% volume
+    const normalized = target / 100;
+    if (video) {
+      video.volume = normalized;
+    }
+    if (activePlyr) {
+      activePlyr.volume = normalized;
+    }
+  }
+
+  updateVolumeBoostUI();
+
+  if (showHud) {
+    showVolumeHUD(target);
+  }
+}
+
+export function toggle200PercentBoost() {
+  const video = getActiveVideo();
+
+  // Make sure video is immediately unmuted
+  if (video) {
+    video.muted = false;
+    video.volume = 1.0;
+  }
+  if (activePlyr) {
+    activePlyr.muted = false;
+    activePlyr.volume = 1.0;
+  }
+
+  if (currentVolumeBoostLevel >= 200) {
+    setVolumeBoost(100);
+    if (window.showToast) window.showToast("Volume: 100% (Normal)");
+  } else {
+    setVolumeBoost(200);
+    if (window.showToast) window.showToast("Volume: 200% (Super Boost 🔥)");
+  }
+}
+
+export function onVolumeBoostSliderChange(val) {
+  setVolumeBoost(val, true);
+}
+
+export function showVolumeHUD(level) {
+  const isBoost = level > 100;
+  const is200 = level >= 200;
+
+  const stages = [
+    document.getElementById('ytPlayerStage'),
+    document.getElementById('playerStage'),
+    document.querySelector('.plyr')
+  ].filter(Boolean);
+
+  stages.forEach(stage => {
+    let hud = stage.querySelector('.video-volume-hud');
+    if (!hud) {
+      hud = document.createElement('div');
+      hud.className = 'video-volume-hud';
+      stage.appendChild(hud);
+    }
+
+    const text = is200 ? 'Volume: 200% (SUPER BOOST 🔥)' : 
+                 isBoost ? `Volume: ${level}% (Boosted ⚡)` : 
+                 `Volume: ${level}%`;
+
+    const borderColor = is200 ? 'border-amber-400' : isBoost ? 'border-amber-400/80' : 'border-brand-cyan/60';
+    const textColor = is200 ? 'text-amber-300' : isBoost ? 'text-amber-200' : 'text-white';
+    const shadowColor = isBoost ? 'shadow-[0_0_25px_rgba(245,158,11,0.5)]' : 'shadow-neon-cyan';
+
+    hud.innerHTML = `
+      <div class="px-4 py-2 rounded-2xl bg-black/85 backdrop-blur-md border ${borderColor} ${textColor} ${shadowColor} flex items-center gap-2.5">
+        <svg class="w-4 h-4 ${isBoost ? 'text-amber-400' : 'text-brand-cyan'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+          ${isBoost 
+            ? '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>' 
+            : '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>'}
+        </svg>
+        <span class="text-xs font-black tracking-wider uppercase font-mono">${text}</span>
+      </div>
+    `;
+
+    hud.classList.remove('is-hidden');
+    hud.classList.add('is-active');
+  });
+
+  if (volumeHudTimer) clearTimeout(volumeHudTimer);
+  volumeHudTimer = setTimeout(() => {
+    document.querySelectorAll('.video-volume-hud').forEach(hud => {
+      hud.classList.remove('is-active');
+      hud.classList.add('is-hidden');
+    });
+  }, 1800);
+}
+
+export function updateVolumeBoostUI() {
+  const level = currentVolumeBoostLevel;
+  const isBoost = level > 100;
+  const is200 = level >= 200;
+
+  // 1. Top bar button
+  const label = document.getElementById('ytVolBoostLabel');
+  if (label) {
+    label.innerText = `${level}%`;
+    label.setAttribute('class', `font-mono font-bold ${isBoost ? 'text-amber-400' : 'text-brand-cyan'}`);
+  }
+
+  const icon = document.getElementById('ytVolBoostIcon');
+  if (icon) {
+    icon.setAttribute('class', `w-3.5 h-3.5 ${isBoost ? 'text-amber-400' : 'text-brand-cyan'}`);
+  }
+
+  const badge = document.getElementById('ytVolBoostBadge');
+  if (badge) {
+    if (isBoost) {
+      badge.classList.remove('hidden');
+      badge.innerText = is200 ? '200% 🔥' : `${level}% ⚡`;
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  const mainBtn = document.getElementById('ytVolumeBoostBtn');
+  if (mainBtn) {
+    if (isBoost) {
+      mainBtn.classList.add('border-amber-400/60', 'bg-amber-500/15', 'text-amber-200');
+    } else {
+      mainBtn.classList.remove('border-amber-400/60', 'bg-amber-500/15', 'text-amber-200');
+    }
+  }
+
+  // 2. Dropdown elements
+  const dropdownCurrent = document.getElementById('ytVolDropdownCurrent');
+  if (dropdownCurrent) {
+    dropdownCurrent.innerText = `${level}%`;
+  }
+
+  const slider = document.getElementById('ytVolumeBoostSlider');
+  if (slider && Number(slider.value) !== level) {
+    slider.value = level;
+  }
+
+  const quickBtnText = document.getElementById('ytQuickBoost200Text');
+  if (quickBtnText) {
+    quickBtnText.innerText = is200 ? 'Reset to 100% Normal' : 'Instant 200% Max Boost';
+  }
+
+  // 3. Injected Plyr control button
+  const plyrBadges = document.querySelectorAll('#plyrVolBoostBadge');
+  plyrBadges.forEach(b => {
+    b.innerText = is200 ? '200% 🔥' : isBoost ? `${level}% ⚡` : '200%';
+    const parent = b.closest('.plyr__control--volume-boost');
+    if (parent) {
+      if (isBoost) {
+        parent.classList.add('is-boosted');
+      } else {
+        parent.classList.remove('is-boosted');
+      }
+    }
+  });
+
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
+}
+
+export function toggleVolumeBoostMenu(event) {
+  if (event && typeof event.stopPropagation === 'function') {
+    event.stopPropagation();
+  }
+  const menu = document.getElementById('ytVolumeBoostMenu');
+  if (menu) {
+    menu.classList.toggle('hidden');
+    if (!menu.classList.contains('hidden')) {
+      updateVolumeBoostUI();
+    }
+  }
+}
+
+export function closeVolumeBoostMenu() {
+  const menu = document.getElementById('ytVolumeBoostMenu');
+  if (menu) {
+    menu.classList.add('hidden');
+  }
+}
+
+export function injectPlyrVolumeControls(plyr) {
+  if (!plyr || !plyr.elements) return;
+
+  const controls = plyr.elements.controls;
+  if (!controls) return;
+
+  if (!controls.querySelector('.plyr__control--volume-boost')) {
+    const volBtn = document.createElement('button');
+    volBtn.type = 'button';
+    volBtn.className = 'plyr__control plyr__control--volume-boost';
+    volBtn.setAttribute('data-plyr', 'volume-boost');
+    volBtn.setAttribute('aria-label', 'Toggle 200% Volume Boost');
+    volBtn.setAttribute('title', '200% Volume Boost (Shortcut B)');
+    volBtn.innerHTML = `
+      <span class="plyr__vol-boost-badge font-mono font-black" id="plyrVolBoostBadge">${currentVolumeBoostLevel >= 200 ? '200% 🔥' : '200%'}</span>
+    `;
+
+    volBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggle200PercentBoost();
+    });
+
+    const volContainer = controls.querySelector('.plyr__volume');
+    if (volContainer && volContainer.nextSibling) {
+      controls.insertBefore(volBtn, volContainer.nextSibling);
+    } else if (volContainer) {
+      volContainer.appendChild(volBtn);
+    } else {
+      const fullscreenBtn = controls.querySelector('[data-plyr="fullscreen"]');
+      if (fullscreenBtn) {
+        controls.insertBefore(volBtn, fullscreenBtn);
+      } else {
+        controls.appendChild(volBtn);
+      }
+    }
+  }
+
+  updateVolumeBoostUI();
+}
+
 /**
  * Standard Plyr control list
  */
@@ -546,7 +902,11 @@ export function showPlayerError(videoTarget, title = "Error loading video", desc
     if (d) d.textContent = desc;
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(ytErr || document.body);
+  } else if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 /**
@@ -793,23 +1153,30 @@ function ensurePlyrAttached(videoElement, resumeTime = 0, options = {}) {
 
   plyr.on('ready', () => {
     injectPlyrAspectControls(plyr);
+    injectPlyrVolumeControls(plyr);
     applyCurrentAspectMode();
+    applyCurrentVolumeBoost();
     updateAspectUI();
+    updateVolumeBoostUI();
   });
 
   plyr.on('enterfullscreen', () => {
     applyCurrentAspectMode();
     updateAspectUI();
     injectPlyrAspectControls(plyr);
+    injectPlyrVolumeControls(plyr);
+    updateVolumeBoostUI();
   });
 
   plyr.on('exitfullscreen', () => {
     applyCurrentAspectMode();
     updateAspectUI();
+    updateVolumeBoostUI();
   });
 
   plyr.on('controlsshown', () => {
     showStageAspectBtn();
+    updateVolumeBoostUI();
   });
 
   plyr.on('controlshidden', () => {
@@ -818,6 +1185,19 @@ function ensurePlyrAttached(videoElement, resumeTime = 0, options = {}) {
 
   plyr.on('play', () => {
     resetStageAspectAutoHide(3000);
+    if (getVolumeBoostLevel() > 100) {
+      applyCurrentVolumeBoost();
+    }
+  });
+
+  plyr.on('volumechange', () => {
+    if (currentVolumeBoostLevel <= 100 && !plyr.muted) {
+      currentVolumeBoostLevel = Math.round((Number(plyr.volume) || 0) * 100);
+      try {
+        localStorage.setItem(VOLUME_BOOST_KEY, String(currentVolumeBoostLevel));
+      } catch (_) {}
+      updateVolumeBoostUI();
+    }
   });
 
   plyr.on('pause', () => {
@@ -827,8 +1207,11 @@ function ensurePlyrAttached(videoElement, resumeTime = 0, options = {}) {
   // Re-check controls after short delay in case controls DOM rendered asynchronously
   setTimeout(() => {
     injectPlyrAspectControls(plyr);
+    injectPlyrVolumeControls(plyr);
     applyCurrentAspectMode();
+    applyCurrentVolumeBoost();
     updateAspectUI();
+    updateVolumeBoostUI();
   }, 120);
 
   return plyr;
@@ -866,10 +1249,15 @@ export function loadVideoWithPlyr(videoTarget, targetUrl, resumeTime = 0, option
   hidePlayerError(videoElement);
   showVideoSpinner(videoElement, options.loadingText || 'Loading Episode...');
 
-  // 3. Ensure no poster image displays and background is black
+  // 3. Ensure no poster image displays, video is explicitly visible, volume is unmuted, and background is black
   videoElement.removeAttribute('poster');
   videoElement.poster = '';
   videoElement.autoplay = true;
+  videoElement.muted = false;
+  videoElement.volume = 1.0;
+  videoElement.style.display = 'block';
+  videoElement.style.opacity = '1';
+  videoElement.style.visibility = 'visible';
 
   // 4. Validate URL
   const streamUrl = typeof targetUrl === 'string' ? targetUrl.trim() : '';
@@ -1129,11 +1517,17 @@ export function toggleMute() {
 }
 
 export function changeVolume(val) {
-  if (activePlyr) {
-    activePlyr.volume = Number(val);
+  const num = Number(val);
+  if (num > 1.0) {
+    const percent = num <= 2.0 ? Math.round(num * 100) : Math.min(200, Math.round(num));
+    setVolumeBoost(percent);
   } else {
-    const vid = getActiveVideo();
-    if (vid) vid.volume = Number(val);
+    if (activePlyr) {
+      activePlyr.volume = Number(val);
+    } else {
+      const vid = getActiveVideo();
+      if (vid) vid.volume = Number(val);
+    }
   }
 }
 
@@ -1237,6 +1631,20 @@ if (typeof window !== "undefined") {
   window.hideStageAspectBtn = hideStageAspectBtn;
   window.resetStageAspectAutoHide = resetStageAspectAutoHide;
   window.initStageAspectAutoHide = initStageAspectAutoHide;
+
+  // 200% Volume Booster APIs
+  window.getVolumeBoostLevel = getVolumeBoostLevel;
+  window.setVolumeBoost = setVolumeBoost;
+  window.toggle200PercentBoost = toggle200PercentBoost;
+  window.onVolumeBoostSliderChange = onVolumeBoostSliderChange;
+  window.showVolumeHUD = showVolumeHUD;
+  window.updateVolumeBoostUI = updateVolumeBoostUI;
+  window.toggleVolumeBoostMenu = toggleVolumeBoostMenu;
+  window.closeVolumeBoostMenu = closeVolumeBoostMenu;
+  window.injectPlyrVolumeControls = injectPlyrVolumeControls;
+  window.applyCurrentVolumeBoost = applyCurrentVolumeBoost;
+  window.initAudioBooster = initAudioBooster;
+  window.restoreCleanNativeVideoElement = restoreCleanNativeVideoElement;
 }
 
 // Auto-initialize UI and aspect handlers on ready
@@ -1244,8 +1652,16 @@ if (typeof document !== "undefined") {
   const initPlayerModules = () => {
     updateAutoplayUI();
     applyCurrentAspectMode();
+    applyCurrentVolumeBoost();
     updateAspectUI();
+    updateVolumeBoostUI();
     initStageAspectAutoHide();
+
+    const mv = document.getElementById('main-video');
+    if (mv) {
+      mv.muted = false;
+      mv.volume = 1.0;
+    }
   };
 
   if (document.readyState === "loading") {
@@ -1258,10 +1674,12 @@ if (typeof document !== "undefined") {
   const handleOrientationOrResize = () => {
     applyCurrentAspectMode();
     updateAspectUI();
+    updateVolumeBoostUI();
 
     // Re-verify Plyr controls in landscape
     if (window.activePlyr) {
       injectPlyrAspectControls(window.activePlyr);
+      injectPlyrVolumeControls(window.activePlyr);
     }
 
     const ytPage = document.getElementById('showPlayerPage');
@@ -1287,19 +1705,27 @@ if (typeof document !== "undefined") {
     }
   }
 
+  let resizeRaf = null;
   window.addEventListener('resize', () => {
-    applyCurrentAspectMode();
+    if (resizeRaf) cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      applyCurrentAspectMode();
+    });
   });
 
-  // Close Aspect Dropdown on outside click
+  // Close Dropdowns on outside click
   document.addEventListener('click', (e) => {
-    const container = document.getElementById('ytAspectContainer');
-    if (container && !container.contains(e.target)) {
+    const aspectContainer = document.getElementById('ytAspectContainer');
+    if (aspectContainer && !aspectContainer.contains(e.target)) {
       closeAspectMenu();
+    }
+    const volContainer = document.getElementById('ytVolumeBoostContainer');
+    if (volContainer && !volContainer.contains(e.target)) {
+      closeVolumeBoostMenu();
     }
   });
 
-  // Global Keyboard Shortcut: Press 'C' or 'c' to cycle aspect mode (Fit -> Stretch -> Crop -> Cinema)
+  // Global Keyboard Shortcuts
   document.addEventListener('keydown', (e) => {
     const active = document.activeElement;
     if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) {
@@ -1310,8 +1736,15 @@ if (typeof document !== "undefined") {
     const modal = document.getElementById('playerModal');
     const isPlayerOpen = (ytPage && !ytPage.classList.contains('hidden')) || (modal && !modal.classList.contains('hidden'));
     
-    if (isPlayerOpen && (e.key === 'c' || e.key === 'C')) {
-      cycleVideoAspectMode();
+    if (isPlayerOpen) {
+      // Key 'C' or 'c': Cycle video aspect mode (Fit -> Stretch -> Crop -> Cinema)
+      if (e.key === 'c' || e.key === 'C') {
+        cycleVideoAspectMode();
+      }
+      // Key 'B' or 'b': Toggle 200% Max Volume Boost!
+      if (e.key === 'b' || e.key === 'B') {
+        toggle200PercentBoost();
+      }
     }
   });
 }

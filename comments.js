@@ -287,7 +287,11 @@ export function updateAuthorUI() {
     }
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons();
+  } else if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 /**
@@ -544,7 +548,11 @@ export function renderCommentsUI() {
         <p class="text-xs text-slate-400 max-w-sm">Be the first to share your thoughts, reaction, or theory about this episode!</p>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    if (window.safeCreateIcons) {
+      window.safeCreateIcons(list);
+    } else if (window.lucide) {
+      window.lucide.createIcons();
+    }
     return;
   }
 
@@ -657,7 +665,11 @@ export function renderCommentsUI() {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  if (window.safeCreateIcons) {
+    window.safeCreateIcons(list);
+  } else if (window.lucide) {
+    window.lucide.createIcons();
+  }
 }
 
 // Attach to window for global inline onclick handlers

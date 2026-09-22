@@ -4,12 +4,25 @@ import {
   addDoc, 
   doc, 
   deleteDoc, 
-  updateDoc,
-  getDocs,
+  updateDoc, 
+  getDocs, 
   onSnapshot 
 } from "firebase/firestore";
 import { db } from "./firebase.js";
 import { isAuthorizedAdmin, currentUser } from "./auth.js";
+
+// Fast icon creation using requestAnimationFrame to prevent DOM thrashing & app lag
+export function safeCreateIcons(root) {
+  if (typeof window === "undefined" || !window.lucide) return;
+  if (window._iconRaf) cancelAnimationFrame(window._iconRaf);
+  window._iconRaf = requestAnimationFrame(() => {
+    try {
+      window.lucide.createIcons(root ? { root } : undefined);
+    } catch (e) {
+      console.warn("Icon creation warning:", e);
+    }
+  });
+}
 
 // Staged In-Memory Batch Queue
 export let stagedBatchQueue = [];
@@ -221,7 +234,8 @@ export function renderStagedBatchQueue() {
     }).join('');
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  if (safeCreateIcons) safeCreateIcons();
+  else if (window.lucide) window.lucide.createIcons();
 }
 
 // UPLOAD ALL BATCH TO FIRESTORE "showverse_episodes"
@@ -241,7 +255,7 @@ export async function uploadAllBatchToFirestore() {
   if (btn) {
     btn.disabled = true;
     btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>Publishing ${totalToUpload} to Firestore...</span>`;
-    if (window.lucide) window.lucide.createIcons();
+    safeCreateIcons(btn);
   }
 
   const itemsToUpload = [...stagedBatchQueue];
@@ -272,7 +286,7 @@ export async function uploadAllBatchToFirestore() {
   if (btn) {
     btn.disabled = false;
     btn.innerHTML = `<i data-lucide="rocket" class="w-4 h-4"></i> <span>Upload ALL to Firestore</span> <span id="batchCountBadge" class="bg-black/80 text-brand-cyan text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">0</span>`;
-    if (window.lucide) window.lucide.createIcons();
+    safeCreateIcons(btn);
   }
 
   if (window.showToast) {
@@ -324,6 +338,12 @@ export function initPublishedContentManager() {
 
       publishedEpisodesCache = published;
       renderPublishedHistory(published);
+      if (typeof updateAdminStats === 'function') {
+        updateAdminStats(published);
+      }
+      if (typeof filterManageContentList === 'function') {
+        filterManageContentList();
+      }
 
       if (historyCounterEl) {
         historyCounterEl.innerText = `${published.length} Published`;
@@ -332,6 +352,8 @@ export function initPublishedContentManager() {
       console.log("[Creator Studio] Firestore operating in offline-cached mode:", error ? (error.message || String(error)) : "offline");
       if (publishedEpisodesCache && publishedEpisodesCache.length > 0) {
         renderPublishedHistory(publishedEpisodesCache);
+        if (typeof updateAdminStats === 'function') updateAdminStats(publishedEpisodesCache);
+        if (typeof filterManageContentList === 'function') filterManageContentList();
       } else if (historyListEl) {
         historyListEl.innerHTML = `
           <div class="p-4 text-center text-xs text-brand-cyan/80 bg-brand-cyan/5 rounded-xl border border-brand-cyan/15 flex flex-col items-center gap-1.5">
@@ -415,8 +437,170 @@ export function renderPublishedHistory(items) {
 // ========================================================
 // MANAGE CONTENT TAB & EDIT CONTENT ENGINE
 // ========================================================
-export let currentAdminStudioTab = 'upload';
+export let currentAdminStudioTab = 'manage';
 export let currentEditingDocId = null;
+export let currentManageViewMode = 'series'; // 'series' or 'episodes'
+export let currentManageSortOrder = 'newest'; // 'newest', 'oldest', 'title', 'episodes'
+export const expandedSeriesSet = new Set();
+
+export function toggleManageViewMode(mode) {
+  currentManageViewMode = mode;
+  const seriesBtn = document.getElementById('manageViewModeSeriesBtn');
+  const episodesBtn = document.getElementById('manageViewModeEpisodesBtn');
+  const viewModeLabel = document.getElementById('manageViewModeLabel');
+
+  if (mode === 'series') {
+    if (seriesBtn) {
+      seriesBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-brand-cyan text-black shadow-sm cursor-pointer';
+    }
+    if (episodesBtn) {
+      episodesBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white cursor-pointer';
+    }
+    if (viewModeLabel) {
+      viewModeLabel.innerHTML = `<i data-lucide="layers" class="w-4 h-4 text-brand-cyan"></i> <span>Grouped Series Overview</span>`;
+    }
+  } else {
+    if (seriesBtn) {
+      seriesBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white cursor-pointer';
+    }
+    if (episodesBtn) {
+      episodesBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-brand-cyan text-black shadow-sm cursor-pointer';
+    }
+    if (viewModeLabel) {
+      viewModeLabel.innerHTML = `<i data-lucide="list" class="w-4 h-4 text-brand-cyan"></i> <span>Flat Episodes Catalog</span>`;
+    }
+  }
+
+  filterManageContentList();
+}
+
+export function setManageSortOrder(order) {
+  currentManageSortOrder = order;
+  filterManageContentList();
+}
+
+export function toggleSeriesAccordion(seriesKey) {
+  if (expandedSeriesSet.has(seriesKey)) {
+    expandedSeriesSet.delete(seriesKey);
+  } else {
+    expandedSeriesSet.add(seriesKey);
+  }
+  filterManageContentList();
+}
+
+export function prepareNewUpload(prefillSeries, prefillCategory, nextEp) {
+  switchAdminStudioTab('upload');
+  
+  if (prefillSeries) {
+    const titleInput = document.getElementById('adminTitle');
+    if (titleInput) titleInput.value = prefillSeries;
+  }
+  
+  if (prefillCategory) {
+    const catSelect = document.getElementById('admin-category');
+    if (catSelect) {
+      catSelect.value = prefillCategory;
+      handleCategoryChange();
+    }
+  }
+
+  if (nextEp !== undefined && nextEp !== null) {
+    const epInput = document.getElementById('adminEpisode');
+    if (epInput) epInput.value = nextEp;
+  }
+
+  const videoUrlInput = document.getElementById('adminVideoUrl');
+  if (videoUrlInput) {
+    videoUrlInput.focus();
+  }
+
+  const uploadForm = document.getElementById('adminUploadForm');
+  if (uploadForm) {
+    uploadForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+export function addNewEpisodeToSeries(seriesTitle, category, currentMaxEp) {
+  const nextEp = (parseInt(currentMaxEp, 10) || 1) + 1;
+  prepareNewUpload(seriesTitle, category, nextEp);
+  if (window.showToast) {
+    window.showToast(`Pre-filling Episode ${nextEp} for "${seriesTitle}"`);
+  }
+}
+
+export async function deleteSeriesAllEpisodes(seriesName) {
+  if (!isAuthorizedAdmin(currentUser)) {
+    if (window.showToast) window.showToast("Unauthorized: Admin verification required.");
+    return;
+  }
+
+  if (!db) {
+    if (window.showToast) window.showToast("Firestore is not connected.");
+    return;
+  }
+
+  const norm = (seriesName || '').trim().toLowerCase();
+  const matchingEpisodes = publishedEpisodesCache.filter(item => {
+    const sName = (item.seriesName || item.seriesTitle || item.title || '').trim().toLowerCase();
+    return sName === norm || sName.startsWith(norm);
+  });
+
+  if (matchingEpisodes.length === 0) {
+    if (window.showToast) window.showToast("No episodes found for this series.");
+    return;
+  }
+
+  const confirmed = window.confirm(`DANGER: Are you sure you want to permanently delete ALL ${matchingEpisodes.length} episode(s) of "${seriesName}" from Firestore? This cannot be undone.`);
+  if (!confirmed) return;
+
+  const docIdsToDelete = matchingEpisodes.map(ep => ep.docId);
+  publishedEpisodesCache = publishedEpisodesCache.filter(x => !docIdsToDelete.includes(x.docId));
+  filterManageContentList();
+  renderPublishedHistory(publishedEpisodesCache);
+
+  let deletedCount = 0;
+  for (const docId of docIdsToDelete) {
+    try {
+      await deleteDoc(doc(db, "showverse_episodes", docId));
+      deletedCount++;
+    } catch (e) {
+      console.warn("Failed to delete episode doc:", docId, e);
+    }
+  }
+
+  if (window.showToast) {
+    window.showToast(`Deleted ${deletedCount} episode(s) of "${seriesName}" from Firestore!`);
+  }
+}
+
+export function updateAdminStats(items) {
+  const statSeries = document.getElementById('adminStatSeries');
+  const statEpisodes = document.getElementById('adminStatEpisodes');
+  const statMovies = document.getElementById('adminStatMovies');
+  const statCategories = document.getElementById('adminStatCategories');
+
+  const seriesMap = new Map();
+  let moviesCount = 0;
+  const categoriesSet = new Set();
+
+  (items || []).forEach(item => {
+    const isMovie = (item.category === 'Movie');
+    if (isMovie) {
+      moviesCount++;
+    } else {
+      const sKey = (item.seriesName || item.seriesTitle || item.title || 'Untitled').trim();
+      seriesMap.set(sKey, (seriesMap.get(sKey) || 0) + 1);
+    }
+    if (item.category) categoriesSet.add(item.category);
+  });
+
+  if (statSeries) statSeries.innerText = seriesMap.size;
+  if (statEpisodes) statEpisodes.innerText = (items || []).length;
+  if (statMovies) statMovies.innerText = moviesCount;
+  if (statCategories) {
+    statCategories.innerHTML = Array.from(categoriesSet).map(c => `<span class="bg-white/10 px-1.5 py-0.5 rounded text-[10px]">${c}</span>`).join(' ') || '<span>Anime</span> <span>Kdrama</span> <span>Movie</span>';
+  }
+}
 
 export function switchAdminStudioTab(tab) {
   currentAdminStudioTab = tab;
@@ -427,26 +611,26 @@ export function switchAdminStudioTab(tab) {
 
   if (tab === 'upload') {
     if (uploadBtn) {
-      uploadBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer';
+      uploadBtn.className = 'px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer';
     }
     if (manageBtn) {
-      manageBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer';
+      manageBtn.className = 'px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer';
     }
     if (uploadContent) uploadContent.classList.remove('hidden');
     if (manageContent) manageContent.classList.add('hidden');
   } else {
     if (uploadBtn) {
-      uploadBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer';
+      uploadBtn.className = 'px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer';
     }
     if (manageBtn) {
-      manageBtn.className = 'px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer';
+      manageBtn.className = 'px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer';
     }
     if (uploadContent) uploadContent.classList.add('hidden');
     if (manageContent) manageContent.classList.remove('hidden');
     fetchAndDisplayManageContent();
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  safeCreateIcons();
 }
 
 export async function fetchAndDisplayManageContent() {
@@ -457,6 +641,7 @@ export async function fetchAndDisplayManageContent() {
   // If already loaded in publishedEpisodesCache, show immediately
   if (publishedEpisodesCache && publishedEpisodesCache.length > 0) {
     if (countBadge) countBadge.innerText = publishedEpisodesCache.length;
+    updateAdminStats(publishedEpisodesCache);
     filterManageContentList();
   } else if (listEl) {
     listEl.innerHTML = `
@@ -465,7 +650,7 @@ export async function fetchAndDisplayManageContent() {
         <p class="font-bold text-slate-200">Fetching Content from Firestore...</p>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    safeCreateIcons(listEl);
   }
 
   if (!db) {
@@ -498,6 +683,7 @@ export async function fetchAndDisplayManageContent() {
     publishedEpisodesCache = items;
     if (countBadge) countBadge.innerText = items.length;
     if (summaryCount) summaryCount.innerText = `${items.length} Items`;
+    updateAdminStats(items);
     filterManageContentList();
   } catch (err) {
     console.warn("Error fetching manage content from Firestore:", err);
@@ -525,7 +711,8 @@ export function filterManageContentList() {
       const title = (item.title || item.seriesTitle || item.seriesName || '').toLowerCase();
       const docId = (item.docId || '').toLowerCase();
       const cat = (item.category || '').toLowerCase();
-      return title.includes(query) || docId.includes(query) || cat.includes(query);
+      const epLabel = (item.episodes || '').toLowerCase();
+      return title.includes(query) || docId.includes(query) || cat.includes(query) || epLabel.includes(query);
     });
   }
 
@@ -538,26 +725,228 @@ export function renderManageContentList(items) {
   const countBadge = document.getElementById('adminManageCountBadge');
 
   if (countBadge) countBadge.innerText = publishedEpisodesCache.length;
-  if (summaryCount) summaryCount.innerText = `${items.length} of ${publishedEpisodesCache.length} Items`;
+  updateAdminStats(publishedEpisodesCache);
 
   if (!listEl) return;
 
   if (items.length === 0) {
+    if (summaryCount) summaryCount.innerText = `0 Items`;
     listEl.innerHTML = `
-      <div class="p-8 text-center text-xs text-slate-400 bg-white/5 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-2">
-        <i data-lucide="film" class="w-8 h-8 text-slate-500"></i>
-        <p class="font-bold text-slate-200">No Content Found</p>
-        <p class="text-[11px] text-slate-500">No series or movies match the current search filter.</p>
+      <div class="p-12 text-center text-xs text-slate-400 bg-white/5 rounded-2xl border border-dashed border-white/10 flex flex-col items-center justify-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-500">
+          <i data-lucide="film" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <p class="font-bold text-slate-200 text-sm">No Content Matches Filter</p>
+          <p class="text-[11px] text-slate-500 mt-1">Try adjusting search term or category dropdown.</p>
+        </div>
+        <button onclick="prepareNewUpload()" class="px-4 py-2 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/30 text-brand-cyan text-xs font-bold transition flex items-center gap-2 cursor-pointer mt-2">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add New Title Now
+        </button>
       </div>
     `;
+    safeCreateIcons(listEl);
+    return;
+  }
+
+  if (currentManageViewMode === 'series') {
+    // Group by series
+    const groups = new Map();
+    items.forEach(item => {
+      const isMovie = (item.category === 'Movie');
+      const seriesKey = isMovie 
+        ? `movie_${item.docId}` 
+        : (item.seriesName || item.seriesTitle || item.title || 'Untitled').trim();
+      
+      if (!groups.has(seriesKey)) {
+        groups.set(seriesKey, {
+          seriesKey,
+          seriesName: isMovie ? (item.title || 'Untitled Movie') : (item.seriesName || item.seriesTitle || item.title || 'Untitled Series'),
+          category: item.category || 'Anime',
+          isMovie,
+          poster: item.image || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=800&q=80',
+          episodes: [],
+          latestUpload: item.uploadedAt || item.createdAt || '',
+          oldestUpload: item.uploadedAt || item.createdAt || '',
+          maxSeason: 1,
+          maxEpisode: 1,
+        });
+      }
+      const grp = groups.get(seriesKey);
+      grp.episodes.push(item);
+      if (item.image && (!grp.poster || grp.poster.includes('unsplash'))) grp.poster = item.image;
+      if (item.season && item.season > grp.maxSeason) grp.maxSeason = item.season;
+      if (item.episode && item.episode > grp.maxEpisode) grp.maxEpisode = item.episode;
+      if (item.uploadedAt && item.uploadedAt > grp.latestUpload) grp.latestUpload = item.uploadedAt;
+      if (item.uploadedAt && item.uploadedAt < grp.oldestUpload) grp.oldestUpload = item.uploadedAt;
+    });
+
+    const seriesArray = Array.from(groups.values());
+
+    // Sort series
+    if (currentManageSortOrder === 'newest') {
+      seriesArray.sort((a, b) => b.latestUpload.localeCompare(a.latestUpload));
+    } else if (currentManageSortOrder === 'oldest') {
+      seriesArray.sort((a, b) => a.oldestUpload.localeCompare(b.oldestUpload));
+    } else if (currentManageSortOrder === 'title') {
+      seriesArray.sort((a, b) => a.seriesName.localeCompare(b.seriesName));
+    } else if (currentManageSortOrder === 'episodes') {
+      seriesArray.sort((a, b) => b.episodes.length - a.episodes.length);
+    }
+
+    if (summaryCount) {
+      summaryCount.innerText = `${seriesArray.length} Series (${items.length} Episodes)`;
+    }
+
+    listEl.innerHTML = seriesArray.map((series, sIdx) => {
+      const isExpanded = expandedSeriesSet.has(series.seriesKey);
+      const badgeClass = getCategoryBadgeClass(series.category);
+      const safeSeriesName = series.seriesName.replace(/'/g, "\\'");
+      const safeSeriesKey = series.seriesKey.replace(/'/g, "\\'");
+      const epCount = series.episodes.length;
+
+      // Sort episodes inside the series: season asc, episode asc
+      series.episodes.sort((a, b) => {
+        const sA = a.season || 1;
+        const sB = b.season || 1;
+        if (sA !== sB) return sA - sB;
+        const eA = a.episode || 1;
+        const eB = b.episode || 1;
+        return eA - eB;
+      });
+
+      const firstVideoUrl = series.episodes[0]?.videoUrl || '';
+      const safeFirstVideo = firstVideoUrl.replace(/'/g, "\\'");
+      const epLabel = series.isMovie ? 'Feature Film' : `${epCount} Episode${epCount > 1 ? 's' : ''}`;
+      const seasonLabel = series.isMovie ? 'Movie' : `Season 1${series.maxSeason > 1 ? ` - ${series.maxSeason}` : ''}`;
+
+      return `
+        <div class="rounded-2xl bg-white/5 hover:bg-white/[0.07] border border-white/10 transition overflow-hidden group/series" id="series-card-${sIdx}">
+          <!-- Series Card Header -->
+          <div class="p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex items-center gap-3.5 min-w-0 flex-1 cursor-pointer" onclick="toggleSeriesAccordion('${safeSeriesKey}')">
+              <div class="relative w-14 h-16 sm:w-16 sm:h-20 rounded-xl overflow-hidden bg-slate-800 flex-shrink-0 border border-white/10 shadow-md">
+                <img src="${series.poster}" alt="${series.seriesName}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=800&q=80'">
+                <span class="absolute top-1 left-1 bg-black/80 text-brand-cyan font-mono text-[9px] px-1.5 py-0.5 rounded font-bold">#${sIdx + 1}</span>
+              </div>
+              <div class="truncate flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="font-black text-white text-sm sm:text-base tracking-wide truncate">${series.seriesName}</h4>
+                  <span class="text-[9px] px-2 py-0.5 rounded-full font-black border uppercase tracking-wider ${badgeClass}">
+                    ${series.category}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 mt-1 text-xs text-slate-400">
+                  <span class="font-bold text-brand-cyan">${epLabel}</span>
+                  <span class="text-slate-600">•</span>
+                  <span>${seasonLabel}</span>
+                  <span class="text-slate-600">•</span>
+                  <span class="text-[11px] text-slate-500">${series.latestUpload ? new Date(series.latestUpload).toLocaleDateString() : 'Active'}</span>
+                </div>
+                <p class="text-[10px] text-slate-500 font-mono mt-0.5">
+                  ${series.isMovie ? `Doc ID: ${series.episodes[0]?.docId || ''}` : `Highest Ep: S${series.maxSeason} Ep ${series.maxEpisode}`}
+                </p>
+              </div>
+            </div>
+
+            <!-- Series Action Buttons -->
+            <div class="flex items-center gap-2 flex-wrap flex-shrink-0">
+              ${!series.isMovie ? `
+                <button onclick="addNewEpisodeToSeries('${safeSeriesName}', '${series.category}', ${series.maxEpisode})" class="px-3 py-1.5 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]" title="Add Next Episode to ${safeSeriesName}">
+                  <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                  <span>+ Ep ${series.maxEpisode + 1}</span>
+                </button>
+              ` : `
+                <button onclick="openEditContentModal('${series.episodes[0]?.docId}')" class="px-3 py-1.5 rounded-xl bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan text-xs font-bold transition flex items-center gap-1.5 cursor-pointer" title="Edit Movie">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  <span>Edit</span>
+                </button>
+              `}
+              <button onclick="playMedia('${safeSeriesName}', '${safeFirstVideo}'); closeCreatorStudio();" class="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer" title="Preview Stream">
+                <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                <span class="hidden sm:inline">Play</span>
+              </button>
+              <button onclick="deleteSeriesAllEpisodes('${safeSeriesName}')" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 hover:text-rose-200 transition cursor-pointer" title="Delete entire series from Firestore">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="toggleSeriesAccordion('${safeSeriesKey}')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+                <span>${isExpanded ? 'Hide' : 'Episodes'} (${epCount})</span>
+                <i data-lucide="${isExpanded ? 'chevron-up' : 'chevron-down'}" class="w-3.5 h-3.5 text-brand-cyan"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Series Episodes Accordion Body -->
+          ${isExpanded ? `
+            <div class="border-t border-white/10 bg-black/30 p-3 sm:p-4 space-y-2">
+              <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 font-mono uppercase tracking-wider mb-2">
+                <span>Episode List (${epCount})</span>
+                <span>Actions (Edit / Stream / Remove)</span>
+              </div>
+              <div class="space-y-2">
+                ${series.episodes.map((ep, epIdx) => {
+                  const safeEpTitle = (ep.title || `${series.seriesName} Ep ${ep.episode || epIdx + 1}`).replace(/'/g, "\\'");
+                  const safeEpDocId = ep.docId;
+                  const safeEpVideo = (ep.videoUrl || '').replace(/'/g, "\\'");
+                  const epTag = ep.episodes || (ep.season ? `S${ep.season} Ep ${ep.episode}` : `Ep ${epIdx + 1}`);
+                  return `
+                    <div class="flex items-center justify-between p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition text-xs">
+                      <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-6 h-6 rounded-lg bg-white/10 text-brand-cyan font-mono font-bold flex items-center justify-center text-[11px] flex-shrink-0">
+                          ${ep.episode || epIdx + 1}
+                        </span>
+                        <div class="truncate">
+                          <p class="font-bold text-slate-200 truncate">${ep.title || `${series.seriesName} - ${epTag}`}</p>
+                          <p class="text-[10px] text-slate-500 font-mono truncate">
+                            <span class="text-brand-cyan/80 font-bold">${epTag}</span> • Doc ID: ${safeEpDocId}
+                          </p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                        <button onclick="openEditContentModal('${safeEpDocId}')" class="px-2.5 py-1 rounded-lg bg-brand-cyan/15 hover:bg-brand-cyan/30 text-brand-cyan text-[11px] font-bold border border-brand-cyan/30 transition flex items-center gap-1 cursor-pointer">
+                          <i data-lucide="edit-3" class="w-3 h-3"></i>
+                          <span>Edit</span>
+                        </button>
+                        <button onclick="playMedia('${safeEpTitle}', '${safeEpVideo}'); closeCreatorStudio();" class="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-slate-200 transition cursor-pointer" title="Preview Video">
+                          <i data-lucide="play" class="w-3 h-3 fill-current"></i>
+                        </button>
+                        <button onclick="deletePublishedEpisode('${safeEpDocId}', '${safeEpTitle}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 hover:text-rose-200 transition cursor-pointer" title="Delete Episode">
+                          <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }).join('');
   } else {
-    listEl.innerHTML = items.map((item, idx) => {
+    // Flat episodes view
+    if (summaryCount) {
+      summaryCount.innerText = `${items.length} of ${publishedEpisodesCache.length} Episodes`;
+    }
+    // Sort items flat
+    const flatItems = [...items];
+    if (currentManageSortOrder === 'newest') {
+      flatItems.sort((a, b) => (b.uploadedAt || '').localeCompare(a.uploadedAt || ''));
+    } else if (currentManageSortOrder === 'oldest') {
+      flatItems.sort((a, b) => (a.uploadedAt || '').localeCompare(b.uploadedAt || ''));
+    } else if (currentManageSortOrder === 'title') {
+      flatItems.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    }
+
+    listEl.innerHTML = flatItems.map((item, idx) => {
       const badgeClass = getCategoryBadgeClass(item.category);
       const safeTitle = (item.title || item.seriesTitle || 'Untitled').replace(/'/g, "\\'");
       const safeDocId = item.docId;
       const displayTitle = item.title || item.seriesTitle || 'Untitled';
       const seriesSub = (item.seriesTitle && item.seriesTitle !== displayTitle) ? item.seriesTitle : (item.episodes || 'Stream Ready');
       const thumb = item.image || 'https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=800&q=80';
+      const safeVideo = (item.videoUrl || '').replace(/'/g, "\\'");
+
       return `
         <div class="flex items-center justify-between p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition text-xs group" id="manage-item-${safeDocId}">
           <div class="flex items-center gap-3.5 min-w-0">
@@ -583,7 +972,7 @@ export function renderManageContentList(items) {
               <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
               <span>Edit</span>
             </button>
-            <button onclick="playMedia('${safeTitle}', '${item.videoUrl}'); closeCreatorStudio();" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition cursor-pointer" title="Preview Video Stream">
+            <button onclick="playMedia('${safeTitle}', '${safeVideo}'); closeCreatorStudio();" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 transition cursor-pointer" title="Preview Video Stream">
               <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
             </button>
             <button onclick="deletePublishedEpisode('${safeDocId}', '${safeTitle}')" class="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 hover:text-rose-200 transition cursor-pointer" title="Delete from Firestore">
@@ -595,7 +984,7 @@ export function renderManageContentList(items) {
     }).join('');
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  safeCreateIcons(listEl);
 }
 
 export function handleEditCategoryChange() {
@@ -791,6 +1180,7 @@ export async function saveEditedContentChanges(e) {
 
     closeEditContentModal();
     renderPublishedHistory(publishedEpisodesCache);
+    updateAdminStats(publishedEpisodesCache);
     filterManageContentList();
 
     // Trigger full app view re-render if available
@@ -806,7 +1196,7 @@ export async function saveEditedContentChanges(e) {
     if (btnSave) {
       btnSave.disabled = false;
       btnSave.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span>Save Changes</span>`;
-      if (window.lucide) window.lucide.createIcons();
+      safeCreateIcons(btnSave);
     }
   }
 }
@@ -830,6 +1220,12 @@ export async function deletePublishedEpisode(docId, title) {
     const targetDocRef = doc(db, "showverse_episodes", docId);
     await deleteDoc(targetDocRef);
     
+    // Immediate local cache purge & re-render
+    publishedEpisodesCache = publishedEpisodesCache.filter(x => x.docId !== docId);
+    filterManageContentList();
+    renderPublishedHistory(publishedEpisodesCache);
+    updateAdminStats(publishedEpisodesCache);
+
     if (window.showToast) {
       window.showToast(`Permanently removed "${title}" from Firestore`);
     }
@@ -849,6 +1245,7 @@ export function handleBatchUpload(e) {
 
 // Mount to window for global HTML onclick handlers
 if (typeof window !== "undefined") {
+  window.safeCreateIcons = safeCreateIcons;
   window.addToBatchQueue = addToBatchQueue;
   window.removeFromBatchQueue = removeFromBatchQueue;
   window.clearBatchQueue = clearBatchQueue;
@@ -869,6 +1266,13 @@ if (typeof window !== "undefined") {
   window.openEditContentModal = openEditContentModal;
   window.closeEditContentModal = closeEditContentModal;
   window.saveEditedContentChanges = saveEditedContentChanges;
+  window.toggleManageViewMode = toggleManageViewMode;
+  window.setManageSortOrder = setManageSortOrder;
+  window.toggleSeriesAccordion = toggleSeriesAccordion;
+  window.prepareNewUpload = prepareNewUpload;
+  window.addNewEpisodeToSeries = addNewEpisodeToSeries;
+  window.deleteSeriesAllEpisodes = deleteSeriesAllEpisodes;
+  window.updateAdminStats = updateAdminStats;
 }
 
 // Auto-initialize event listeners and published content history when DOM is ready

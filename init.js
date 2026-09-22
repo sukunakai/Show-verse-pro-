@@ -23,7 +23,42 @@ export {
   closeCreatorStudio 
 };
 
+// ========================================================
+// HIGH-PERFORMANCE DEBOUNCED ICON RENDERER (PREVENTS LAG)
+// ========================================================
+let pendingIconTimer = null;
+const iconTargets = new Set();
+
+export function safeCreateIcons(scopeElement) {
+  if (typeof window === 'undefined' || !window.lucide || typeof window.lucide.createIcons !== 'function') return;
+  if (scopeElement && scopeElement.nodeType === 1) {
+    iconTargets.add(scopeElement);
+  }
+  if (pendingIconTimer) return;
+  pendingIconTimer = requestAnimationFrame(() => {
+    pendingIconTimer = null;
+    try {
+      if (iconTargets.size > 0) {
+        iconTargets.forEach(el => {
+          if (el && el.isConnected) {
+            try { window.lucide.createIcons({ root: el }); } catch (e) {}
+          }
+        });
+        iconTargets.clear();
+      } else {
+        window.lucide.createIcons();
+      }
+    } catch (e) {
+      try { window.lucide.createIcons(); } catch (err) {}
+    }
+  });
+}
+if (typeof window !== 'undefined') {
+  window.safeCreateIcons = safeCreateIcons;
+}
+
 let currentPlayingMedia = null;
+let lastCwSaveTime = 0;
 const CW_STORAGE_KEY = 'showverse_continue_watching';
 const WATCH_HISTORY_KEY = 'showverse_watch_history_records';
 
@@ -44,6 +79,22 @@ export function saveContinueWatchingProgress(current, duration) {
   const dur = Number.isFinite(duration) && duration > 0 ? duration : (Number(currentPlayingMedia.duration) || 0);
   const progressPct = dur > 0 ? Math.min(100, Math.round((current / dur) * 100)) : 0;
   const mediaTitle = String(currentPlayingMedia.title);
+  const safeId = String(currentPlayingMedia.id || mediaTitle).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  // Fast direct DOM update: updates progress bar in-place without tearing down DOM
+  const existingBar = document.getElementById('cw-bar-' + safeId);
+  const existingPct = document.getElementById('cw-pct-' + safeId);
+  const existingResume = document.getElementById('cw-time-' + safeId);
+  if (existingBar) existingBar.style.width = progressPct + '%';
+  if (existingPct) existingPct.innerText = progressPct + '%';
+  if (existingResume) existingResume.innerText = 'Resume at ' + formatTime(Math.floor(current));
+
+  // Throttle disk writes to at most once per 6 seconds
+  const now = Date.now();
+  if (now - lastCwSaveTime < 6000 && existingBar) {
+    return;
+  }
+  lastCwSaveTime = now;
 
   let list = getContinueWatchingList();
   list = list.filter(item => String(item.title) !== mediaTitle);
@@ -62,20 +113,13 @@ export function saveContinueWatchingProgress(current, duration) {
     });
   }
 
-  recordWatchHistory({
-    id: currentPlayingMedia.id,
-    title: mediaTitle,
-    videoUrl: currentPlayingMedia.videoUrl,
-    image: currentPlayingMedia.image,
-    category: currentPlayingMedia.category,
-    currentTime: Math.floor(current)
-  });
-
   try {
     localStorage.setItem(CW_STORAGE_KEY, JSON.stringify(list.slice(0, 12)));
   } catch (e) {}
 
-  renderContinueWatching();
+  if (!existingBar) {
+    renderContinueWatching();
+  }
 }
 
 export function renderContinueWatching() {
@@ -100,6 +144,7 @@ export function renderContinueWatching() {
       const safeUrl = (m.videoUrl || '').replace(/'/g, "\\'");
       const safeImage = (m.image || '').replace(/'/g, "\\'");
       const safeCat = (m.category || 'Anime').replace(/'/g, "\\'");
+      const safeId = String(m.id || safeTitle).replace(/[^a-zA-Z0-9_-]/g, '_');
       const catColor = m.category === 'Kdrama' ? 'bg-rose-500 text-white' :
         m.category === 'Anime' ? 'bg-brand-cyan text-black' :
         m.category === 'Chinese Drama' ? 'bg-amber-400 text-black' : 'bg-purple-500 text-white';
@@ -118,7 +163,7 @@ export function renderContinueWatching() {
               </div>
             </div>
             <div class="absolute bottom-0 left-0 right-0 h-1.5 bg-white/20">
-              <div class="h-full bg-gradient-to-r from-brand-cyan to-brand-purple" style="width: ${m.progressPct}%"></div>
+              <div id="cw-bar-${safeId}" class="h-full bg-gradient-to-r from-brand-cyan to-brand-purple" style="width: ${m.progressPct}%"></div>
             </div>
           </div>
           <div class="p-3 flex items-center justify-between">
@@ -127,8 +172,8 @@ export function renderContinueWatching() {
                 ${m.title}
               </h3>
               <p class="text-[10px] text-slate-400 mt-0.5 flex items-center justify-between">
-                <span class="text-brand-cyan font-mono font-semibold">Resume at ${formatTime(m.currentTime)}</span>
-                <span class="text-slate-400 font-mono">${m.progressPct}%</span>
+                <span id="cw-time-${safeId}" class="text-brand-cyan font-mono font-semibold">Resume at ${formatTime(m.currentTime)}</span>
+                <span id="cw-pct-${safeId}" class="text-slate-400 font-mono">${m.progressPct}%</span>
               </p>
             </div>
             <button onclick="removeFromContinueWatching('${safeTitle}')" class="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition cursor-pointer" title="Dismiss">
@@ -140,7 +185,7 @@ export function renderContinueWatching() {
     }).join('');
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  safeCreateIcons(container);
 }
 
 export function getWatchHistory() {
@@ -245,7 +290,7 @@ export function renderWatchHistory() {
     }).join('');
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  safeCreateIcons(container);
 }
 
 export function enforceSecretAdminRule(user) {
@@ -458,7 +503,7 @@ export function handleSearchQuery(query) {
         <p class="text-[11px] text-slate-500">Try searching with a different keyword or category name.</p>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    safeCreateIcons(container);
     return;
   }
 
@@ -492,7 +537,7 @@ export function handleSearchQuery(query) {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  safeCreateIcons(container);
 }
 
 export function showToast(msg) {
@@ -561,7 +606,7 @@ if (typeof document !== "undefined") {
   document.addEventListener('DOMContentLoaded', () => {
     enforceSecretAdminRule(currentUser);
     renderContinueWatching();
-    if (window.lucide) window.lucide.createIcons();
+    safeCreateIcons();
     window.addEventListener('keydown', (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();

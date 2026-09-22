@@ -189,6 +189,8 @@
     }
     .tilt-card {
       transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
+      will-change: transform;
+      contain: layout paint;
     }
     .tilt-card:hover {
       transform: translateY(-6px) scale(1.02);
@@ -196,6 +198,23 @@
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Ultra-Fast Zero-Lag Scrolling & GPU Acceleration */
+    #trendingRow,
+    #kdramaRow,
+    #animeRow,
+    #cdramaRow,
+    #moviesRow,
+    #ytEpisodesRow,
+    #ytSuggestedRow {
+      -webkit-overflow-scrolling: touch;
+      transform: translateZ(0);
+      will-change: scroll-position;
+      scroll-behavior: smooth;
+    }
+    #heroImage {
+      content-visibility: auto;
+    }
   </style>
 
   <!-- Show Verse Video Player & Fullscreen/Landscape Styles -->
@@ -237,6 +256,13 @@
         <i data-lucide="bookmark" class="w-3.5 h-3.5 text-brand-cyan"></i>
         <span class="hidden sm:inline">Watch Later</span>
         <span id="navWatchLaterBadge" class="min-w-[18px] h-4.5 px-1 rounded-full bg-white/10 text-slate-400 text-[10px] font-bold flex items-center justify-center font-mono">0</span>
+      </button>
+
+      <!-- Full Tab Admin Option (Hidden by default; unhidden ONLY when signed in with authorized admin email) -->
+      <button id="navAdminBtn" onclick="openCreatorStudio()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan hover:text-white transition cursor-pointer text-xs font-black shadow-sm" style="display: none;" title="Admin Studio & Content Manager">
+        <i data-lucide="clapperboard" class="w-3.5 h-3.5 text-brand-cyan"></i>
+        <span class="hidden md:inline">Admin Studio</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse"></span>
       </button>
 
       <button id="profileMenuBtn" onclick="openMeModal()" class="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-cyan/40 transition cursor-pointer" title="Profile (Me)">
@@ -289,7 +315,7 @@
     <section id="heroSection" class="relative min-h-[85vh] md:min-h-[92vh] flex items-end pb-20 md:pb-28 px-4 md:px-12 overflow-hidden">
       <!-- Carousel Backdrop -->
       <div id="heroBackdrops" class="absolute inset-0 -z-10 transition-opacity duration-1000">
-        <img id="heroImage" src="https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=2000&q=80" alt="Hero Banner" class="w-full h-full object-cover object-center filter brightness-[0.6] contrast-[1.12]" />
+        <img id="heroImage" src="https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=2000&q=80" alt="Hero Banner" class="w-full h-full object-cover object-center filter brightness-[0.6] contrast-[1.12]" fetchpriority="high" decoding="async" />
         <div class="absolute inset-0 bg-gradient-to-t from-brand-dark via-brand-dark/50 to-transparent"></div>
         <div class="absolute inset-0 bg-gradient-to-r from-brand-dark via-brand-dark/70 to-transparent"></div>
       </div>
@@ -604,6 +630,84 @@
           </div>
         </div>
 
+        <!-- 200% Audio Booster Controller (Up to 200% Super Loud) -->
+        <div class="relative" id="ytVolumeBoostContainer">
+          <button 
+            type="button" 
+            id="ytVolumeBoostBtn" 
+            onclick="toggleVolumeBoostMenu(event)" 
+            class="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 hover:border-amber-400/50 transition cursor-pointer text-xs font-bold text-slate-200 hover:text-white" 
+            title="Audio Volume Booster (Up to 200% Boost - Shortcut 'B')"
+          >
+            <i data-lucide="volume-2" class="w-3.5 h-3.5 text-brand-cyan" id="ytVolBoostIcon"></i>
+            <span class="text-slate-200">
+              <span class="hidden sm:inline">Vol: </span>
+              <span class="font-mono text-brand-cyan font-bold" id="ytVolBoostLabel">100%</span>
+            </span>
+            <span id="ytVolBoostBadge" class="hidden px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/25 text-amber-300 border border-amber-500/50 animate-pulse">
+              200% 🔥
+            </span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+          </button>
+
+          <!-- Volume Booster Dropdown Menu -->
+          <div id="ytVolumeBoostMenu" class="hidden absolute right-0 top-full mt-2 w-64 rounded-2xl bg-black/95 border border-amber-500/40 shadow-[0_0_25px_rgba(245,158,11,0.25)] p-3.5 z-50 backdrop-blur-xl space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                <span class="text-xs font-black uppercase tracking-wider text-white">Audio Booster</span>
+              </div>
+              <span id="ytVolDropdownCurrent" class="text-xs font-mono font-black text-amber-400 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30">
+                100%
+              </span>
+            </div>
+
+            <!-- Fast 200% Toggle Button -->
+            <button 
+              type="button" 
+              id="ytQuickBoost200Btn"
+              onclick="toggle200PercentBoost()" 
+              class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/50 text-amber-300 hover:text-white font-extrabold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+            >
+              <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+              <span id="ytQuickBoost200Text">Instant 200% Max Boost</span>
+            </button>
+
+            <!-- Smooth Volume Slider (0% to 200%) -->
+            <div class="space-y-1.5 pt-1">
+              <div class="flex items-center justify-between text-[11px] text-slate-400 font-medium">
+                <span>Volume Level</span>
+                <span class="text-[10px] text-slate-400 font-mono">100% | Boost 200%</span>
+              </div>
+              <div class="relative flex items-center">
+                <input 
+                  type="range" 
+                  id="ytVolumeBoostSlider" 
+                  min="0" 
+                  max="200" 
+                  step="5" 
+                  value="100" 
+                  oninput="onVolumeBoostSliderChange(this.value)"
+                  class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-400"
+                />
+              </div>
+              <div class="flex justify-between text-[10px] font-mono text-slate-400 px-0.5">
+                <span>0%</span>
+                <span class="text-brand-cyan">100%</span>
+                <span class="text-amber-400 font-bold">200% 🔥</span>
+              </div>
+            </div>
+
+            <!-- Quick Preset Pills -->
+            <div class="grid grid-cols-4 gap-1.5 pt-1">
+              <button type="button" onclick="setVolumeBoost(50)" class="py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono font-bold text-slate-300 hover:text-white border border-white/10 transition cursor-pointer">50%</button>
+              <button type="button" onclick="setVolumeBoost(100)" class="py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono font-bold text-slate-300 hover:text-white border border-white/10 transition cursor-pointer">100%</button>
+              <button type="button" onclick="setVolumeBoost(150)" class="py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono font-bold text-amber-300 hover:text-white border border-amber-500/20 transition cursor-pointer">150%</button>
+              <button type="button" onclick="setVolumeBoost(200)" class="py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-[11px] font-mono font-black text-amber-400 hover:text-amber-200 border border-amber-500/40 transition cursor-pointer shadow-[0_0_10px_rgba(245,158,11,0.2)]">200%</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Ambient Glow Button (Compact) -->
         <button onclick="toggleYtAmbient()" id="ytAmbientBtn" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-brand-cyan border border-white/10 hover:border-brand-cyan/40 transition cursor-pointer shrink-0" title="Toggle Ambient Glow">
           <i data-lucide="sun" class="w-4 h-4"></i>
@@ -623,6 +727,14 @@
           <div class="px-4 py-2 rounded-2xl bg-black/85 backdrop-blur-md border border-brand-cyan/60 text-white shadow-neon-cyan flex items-center gap-2.5">
             <i id="ytAspectHUDIcon" data-lucide="maximize-2" class="w-4 h-4 text-brand-cyan"></i>
             <span id="ytAspectHUDText" class="text-xs font-black tracking-wider uppercase">Aspect: FIT (Original)</span>
+          </div>
+        </div>
+
+        <!-- 200% Volume Boost HUD Badge Overlay -->
+        <div id="ytVolumeHUD" class="video-volume-hud is-hidden">
+          <div class="px-4 py-2 rounded-2xl bg-black/85 backdrop-blur-md border border-amber-400 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.5)] flex items-center gap-2.5">
+            <i data-lucide="flame" class="w-4 h-4 text-amber-400"></i>
+            <span id="ytVolumeHUDText" class="text-xs font-black tracking-wider uppercase font-mono">Volume: 200% (Super Boost)</span>
           </div>
         </div>
 
@@ -1313,178 +1425,328 @@
     </div>
   </div>
 
-  <!-- CREATOR STUDIO ADMIN MODAL -->
-  <div id="creatorStudioModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4">
-    <div class="w-full max-w-4xl glass-card rounded-3xl p-6 md:p-8 border border-brand-cyan/40 shadow-neon-cyan space-y-6 max-h-[92vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-white/10 pb-4">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-brand-cyan/20 border border-brand-cyan text-brand-cyan flex items-center justify-center shadow-neon-cyan">
-            <i data-lucide="clapperboard" class="w-6 h-6"></i>
+  <!-- CREATOR STUDIO ADMIN FULL SCREEN TAB & CONTENT MANAGER -->
+  <div id="creatorStudioModal" class="hidden fixed inset-0 z-50 bg-[#07090E] overflow-y-auto min-h-screen text-slate-100 flex flex-col">
+    <!-- Top Sticky Full-Width Studio Bar -->
+    <header class="sticky top-0 z-40 bg-[#07090E]/95 backdrop-blur-xl border-b border-white/10 px-4 md:px-8 py-3.5 flex items-center justify-between shadow-lg">
+      <div class="flex items-center gap-3">
+        <button onclick="closeCreatorStudio()" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-slate-300 hover:text-white text-xs font-bold transition cursor-pointer">
+          <i data-lucide="arrow-left" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Back to App</span>
+        </button>
+        <div class="h-5 w-px bg-white/10 hidden sm:block"></div>
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-cyan to-brand-purple p-0.5 shadow-neon-cyan flex items-center justify-center">
+            <div class="w-full h-full bg-[#07090E] rounded-[10px] flex items-center justify-center">
+              <i data-lucide="clapperboard" class="w-4 h-4 text-brand-cyan"></i>
+            </div>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h3 class="text-lg font-black text-white">Creator Studio (Admin Control)</h3>
-              <span class="text-[10px] bg-brand-cyan text-black font-extrabold px-2 py-0.5 rounded-full">FIRESTORE DIRECT</span>
+              <h2 class="text-sm font-black text-white tracking-wide uppercase">Creator Studio</h2>
+              <span class="text-[9px] bg-brand-cyan text-black font-extrabold px-2 py-0.5 rounded-full">FULL TAB MODE</span>
             </div>
-            <p class="text-xs text-slate-400">Restricted Admin Portal: <span class="text-brand-cyan font-mono" id="adminStudioEmailDisplay">vimleshkumar901559@gmail.com</span></p>
+            <p class="text-[10px] text-slate-400 hidden sm:block">
+              Cloud Database: <code class="text-brand-cyan font-mono">showverse_episodes</code>
+            </p>
           </div>
         </div>
-        <button onclick="closeCreatorStudio()" class="p-2 rounded-xl bg-white/5 text-slate-400 hover:text-white cursor-pointer">
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="text-slate-400">Admin Account:</span>
+          <span id="adminStudioEmailDisplay" class="font-mono text-brand-cyan font-bold">vimleshkumar901559@gmail.com</span>
+        </div>
+        <button onclick="closeCreatorStudio()" class="p-2 rounded-xl bg-white/5 hover:bg-white/15 text-slate-400 hover:text-white cursor-pointer" title="Exit Creator Studio">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
+    </header>
 
-      <!-- CREATOR STUDIO SECTION TABS: BATCH UPLOAD vs MANAGE CONTENT -->
-      <div class="flex items-center justify-between border-b border-white/10 pb-3">
-        <div class="flex items-center gap-2">
-          <button id="adminTabUploadBtn" onclick="switchAdminStudioTab('upload')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer">
-            <i data-lucide="upload-cloud" class="w-4 h-4"></i>
-            <span>Batch Upload</span>
+    <!-- MAIN BODY: EITHER AUTH PROMPT OR FULL DASHBOARD -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col space-y-6">
+
+      <!-- 1. AUTH PROMPT (Shown only if current user is not authorized admin) -->
+      <div id="adminStudioAuthPrompt" class="hidden flex flex-col items-center justify-center py-16 px-4">
+        <div class="max-w-md w-full glass-card rounded-3xl p-8 border border-brand-cyan/40 shadow-neon-cyan text-center space-y-6">
+          <div class="w-16 h-16 rounded-2xl bg-brand-cyan/20 border border-brand-cyan text-brand-cyan flex items-center justify-center mx-auto shadow-neon-cyan">
+            <i data-lucide="shield-alert" class="w-8 h-8"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-black text-white">Admin Verification Required</h3>
+            <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+              Creator Studio provides direct Firestore CRUD control over shows, series, and video streams. Please sign in with the authorized master admin account:
+            </p>
+            <div class="mt-2 inline-block px-3 py-1 rounded-full bg-brand-cyan/15 text-brand-cyan font-mono text-xs font-bold border border-brand-cyan/30">
+              vimleshkumar901559@gmail.com
+            </div>
+          </div>
+
+          <form onsubmit="handleAdminTabLogin(event)" class="space-y-3.5 text-left">
+            <div>
+              <label class="block text-[11px] font-bold text-slate-300 mb-1">Admin Email</label>
+              <input type="email" id="adminTabLoginEmail" required value="vimleshkumar901559@gmail.com" class="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-brand-cyan focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-slate-300 mb-1">Password</label>
+              <input type="password" id="adminTabLoginPassword" required placeholder="Enter password" class="w-full bg-white/5 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-brand-cyan focus:outline-none">
+            </div>
+            <button type="submit" id="btnAdminTabLogin" class="w-full py-3 rounded-xl bg-brand-cyan hover:bg-cyan-300 text-black font-black text-xs shadow-neon-cyan transition flex items-center justify-center gap-2 cursor-pointer">
+              <i data-lucide="lock" class="w-4 h-4 fill-black"></i>
+              <span>Sign In as Admin</span>
+            </button>
+          </form>
+
+          <button onclick="closeCreatorStudio()" class="text-xs text-slate-400 hover:text-white transition">
+            ← Cancel & Return to App
           </button>
-          <button id="adminTabManageBtn" onclick="switchAdminStudioTab('manage')" class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer">
-            <i data-lucide="film" class="w-4 h-4"></i>
-            <span>Manage Content</span>
-            <span id="adminManageCountBadge" class="bg-brand-cyan/20 border border-brand-cyan/40 text-brand-cyan text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">0</span>
-          </button>
-        </div>
-        <div class="text-[11px] text-slate-400 hidden sm:flex items-center gap-1.5">
-          <i data-lucide="database" class="w-3.5 h-3.5 text-brand-cyan"></i>
-          <span>Firestore: <code class="text-brand-cyan font-mono">showverse_episodes</code></span>
         </div>
       </div>
 
-      <!-- TAB 1: BATCH UPLOAD TAB CONTENT -->
-      <div id="adminTabUploadContent" class="space-y-6">
-        <form id="adminUploadForm" onsubmit="handleBatchUpload(event)" class="space-y-4 bg-white/5 p-5 rounded-2xl border border-white/10">
-          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-            <i data-lucide="upload-cloud" class="w-4 h-4 text-brand-cyan"></i> Batch-Upload Episode or Movie to Firestore
-          </h4>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="md:col-span-2">
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Series / Title Name *</label>
-              <input type="text" id="adminTitle" required placeholder="e.g., Solo Leveling: Arise" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
+      <!-- 2. FULL ADMIN DASHBOARD VIEW (Shown when authorized admin) -->
+      <div id="adminStudioDashboardView" class="space-y-6 flex-1 flex flex-col">
+
+        <!-- KPI Summary Cards Row -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="p-4 rounded-2xl glass-card border border-white/10 hover:border-brand-cyan/40 transition">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-xs font-bold">Total Series</span>
+              <i data-lucide="layers" class="w-4 h-4 text-brand-cyan"></i>
             </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Category (Strict Mapping) *</label>
-              <select id="admin-category" onchange="handleCategoryChange()" required class="w-full bg-slate-900 border border-brand-cyan/40 rounded-xl px-3 py-2 text-xs text-brand-cyan font-bold focus:border-brand-cyan focus:outline-none cursor-pointer">
+            <div class="text-2xl font-black text-white" id="adminStatSeries">0</div>
+            <p class="text-[10px] text-slate-500 mt-1">Unique shows grouped</p>
+          </div>
+
+          <div class="p-4 rounded-2xl glass-card border border-white/10 hover:border-brand-cyan/40 transition">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-xs font-bold">Total Episodes</span>
+              <i data-lucide="film" class="w-4 h-4 text-brand-purple"></i>
+            </div>
+            <div class="text-2xl font-black text-white" id="adminStatEpisodes">0</div>
+            <p class="text-[10px] text-slate-500 mt-1">Uploaded video streams</p>
+          </div>
+
+          <div class="p-4 rounded-2xl glass-card border border-white/10 hover:border-brand-cyan/40 transition">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-xs font-bold">Movies</span>
+              <i data-lucide="clapperboard" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div class="text-2xl font-black text-white" id="adminStatMovies">0</div>
+            <p class="text-[10px] text-slate-500 mt-1">Standalone film titles</p>
+          </div>
+
+          <div class="p-4 rounded-2xl glass-card border border-white/10 hover:border-brand-cyan/40 transition">
+            <div class="flex items-center justify-between text-slate-400 mb-1">
+              <span class="text-xs font-bold">Categories</span>
+              <i data-lucide="tag" class="w-4 h-4 text-amber-400"></i>
+            </div>
+            <div class="text-xs font-mono font-bold text-amber-300 mt-1.5 flex flex-wrap gap-1" id="adminStatCategories">
+              <span>Anime</span> • <span>Kdrama</span> • <span>C-Drama</span> • <span>Movie</span>
+            </div>
+            <p class="text-[10px] text-slate-500 mt-1">Strict categorization active</p>
+          </div>
+        </div>
+
+        <!-- Studio Main Navigation Tabs -->
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2">
+            <button id="adminTabManageBtn" onclick="switchAdminStudioTab('manage')" class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 bg-brand-cyan text-black shadow-neon-cyan cursor-pointer">
+              <i data-lucide="layout-grid" class="w-4 h-4"></i>
+              <span>Manage Content</span>
+              <span id="adminManageCountBadge" class="bg-black/80 text-brand-cyan text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">0</span>
+            </button>
+            <button id="adminTabUploadBtn" onclick="switchAdminStudioTab('upload')" class="px-5 py-2.5 rounded-xl text-xs font-extrabold transition flex items-center gap-2 text-slate-400 hover:text-white hover:bg-white/5 cursor-pointer">
+              <i data-lucide="upload-cloud" class="w-4 h-4"></i>
+              <span>Batch Upload</span>
+              <span id="batchCountBadge" class="bg-white/10 text-slate-300 text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">0</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="prepareNewUpload()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-brand-cyan/20 to-brand-purple/20 hover:from-brand-cyan/35 hover:to-brand-purple/35 border border-brand-cyan/40 text-brand-cyan hover:text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>+ Add New Title</span>
+            </button>
+            <button onclick="fetchAndDisplayManageContent()" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer" title="Refresh Live Firestore Data">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-brand-cyan"></i>
+              <span class="hidden sm:inline">Sync</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TAB 1: MANAGE CONTENT TAB (DEFAULT TAB) -->
+        <div id="adminTabManageContent" class="space-y-4">
+          <!-- Filter Controls Bar -->
+          <div class="glass-card p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="flex-1 flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+              <!-- Search Filter Input -->
+              <div class="relative flex-1 min-w-[200px]">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input type="text" id="manageContentSearch" oninput="filterManageContentList()" placeholder="Search by Series Title, Episode, or Doc ID..." class="w-full bg-slate-900/90 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-brand-cyan focus:outline-none">
+              </div>
+
+              <!-- Category Dropdown Filter -->
+              <select id="manageContentCategoryFilter" onchange="filterManageContentList()" class="bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-cyan focus:outline-none cursor-pointer">
+                <option value="All">All Categories</option>
                 <option value="Kdrama">Kdrama</option>
-                <option value="Anime" selected>Anime</option>
+                <option value="Anime">Anime</option>
                 <option value="Chinese Drama">Chinese Drama</option>
                 <option value="Movie">Movie</option>
               </select>
+
+              <!-- Sort Order Filter -->
+              <select id="manageContentSortFilter" onchange="setManageSortOrder(this.value)" class="bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-cyan focus:outline-none cursor-pointer">
+                <option value="newest">Sort: Newest Uploaded</option>
+                <option value="oldest">Sort: Oldest First</option>
+                <option value="title">Sort: Title (A-Z)</option>
+                <option value="episodes">Sort: Most Episodes</option>
+              </select>
             </div>
-          </div>
-          <div class="grid grid-cols-2 gap-4" id="adminSeasonEpisodeRow">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Season</label>
-              <input type="number" id="adminSeason" value="1" min="1" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Episode #</label>
-              <input type="number" id="adminEpisode" value="1" min="1" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Master Video Stream URL (.mp4 / .m3u8 HLS) *</label>
-              <input type="url" id="adminVideoUrl" required placeholder="https://vjs.zencdn.net/v/oceans.mp4" value="https://vjs.zencdn.net/v/oceans.mp4" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Thumbnail / Poster Image URL</label>
-              <input type="url" id="adminThumbUrl" placeholder="https://images.unsplash.com/photo-..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Audio Tracks (Comma separated)</label>
-              <input type="text" id="adminAudioTracks" value="Dolby Atmos 5.1, Studio Master" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Subtitles (Comma separated)</label>
-              <input type="text" id="adminSubtitles" value="English CC, Spanish, Japanese, Hindi" class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1">Synopsis</label>
-            <textarea id="adminSynopsis" rows="2" placeholder="Brief synopsis of this title..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none"></textarea>
-          </div>
-          <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
-            <div class="flex items-center gap-2 text-xs text-emerald-400">
-              <i data-lucide="shield-check" class="w-4 h-4"></i>
-              <span>Verified Admin: vimleshkumar901559@gmail.com</span>
-            </div>
-            <div class="flex items-center gap-2.5">
-              <button type="button" onclick="addToBatchQueue()" class="px-4 py-2.5 rounded-xl border border-brand-cyan/60 hover:bg-brand-cyan/10 text-brand-cyan font-bold text-xs transition flex items-center gap-2 cursor-pointer">
-                <i data-lucide="plus-circle" class="w-4 h-4"></i> + Add to Batch Queue
+
+            <!-- View Mode Selector: Group by Series vs Single Episodes -->
+            <div class="flex items-center gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/10 flex-shrink-0">
+              <button id="manageViewModeSeriesBtn" onclick="toggleManageViewMode('series')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-brand-cyan text-black shadow-sm cursor-pointer">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                <span>Series View</span>
               </button>
-              <button type="button" onclick="uploadAllBatchToFirestore()" id="btnUploadAllBatch" class="px-6 py-2.5 bg-brand-cyan text-black font-extrabold text-xs rounded-xl shadow-neon-cyan hover:bg-cyan-300 transition flex items-center gap-2 cursor-pointer">
-                <i data-lucide="rocket" class="w-4 h-4"></i> <span>Upload ALL to Firestore</span>
-                <span id="batchCountBadge" class="bg-black/80 text-brand-cyan text-[10px] px-2 py-0.5 rounded-full font-mono font-bold">0</span>
+              <button id="manageViewModeEpisodesBtn" onclick="toggleManageViewMode('episodes')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-400 hover:text-white cursor-pointer">
+                <i data-lucide="list" class="w-3.5 h-3.5"></i>
+                <span>All Episodes</span>
               </button>
             </div>
           </div>
-        </form>
 
-        <div class="space-y-3">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <i data-lucide="layers" class="w-4 h-4 text-brand-cyan"></i>
-              <h4 class="text-xs font-black uppercase tracking-wider text-slate-200">STAGED BATCH QUEUE</h4>
-            </div>
-            <div class="flex items-center gap-3">
-              <span id="batchQueueCounter" class="text-xs text-brand-cyan font-mono font-bold">0 Items</span>
-              <button onclick="clearBatchQueue()" class="text-[11px] text-slate-400 hover:text-rose-400 transition cursor-pointer">Clear Queue</button>
-            </div>
-          </div>
-          <div id="stagedBatchQueueList" class="space-y-2 max-h-52 overflow-y-auto"></div>
-        </div>
-
-        <div class="space-y-3 border-t border-white/10 pt-5">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
-              <h4 class="text-xs font-black uppercase tracking-wider text-white">PUBLISHED CONTENT HISTORY (<code class="text-brand-cyan font-mono text-[11px]">showverse_episodes</code>)</h4>
-            </div>
-            <span id="publishedContentCounter" class="text-xs text-emerald-400 font-mono font-bold">Live Synced</span>
-          </div>
-          <div id="publishedContentList" class="space-y-2 max-h-64 overflow-y-auto"></div>
-        </div>
-      </div>
-
-      <!-- TAB 2: MANAGE CONTENT TAB (FETCH, LIST & EDIT UPLOADED CONTENT) -->
-      <div id="adminTabManageContent" class="hidden space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
-          <div class="flex-1 flex items-center gap-3">
-            <div class="relative flex-1">
-              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-              <input type="text" id="manageContentSearch" oninput="filterManageContentList()" placeholder="Filter by title, category, or document ID..." class="w-full bg-slate-900/80 border border-white/15 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:border-brand-cyan focus:outline-none">
-            </div>
-            <select id="manageContentCategoryFilter" onchange="filterManageContentList()" class="bg-slate-900 border border-white/15 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-brand-cyan focus:outline-none cursor-pointer">
-              <option value="All">All Categories</option>
-              <option value="Kdrama">Kdrama</option>
-              <option value="Anime">Anime</option>
-              <option value="Chinese Drama">Chinese Drama</option>
-              <option value="Movie">Movie</option>
-            </select>
-          </div>
-          <button onclick="fetchAndDisplayManageContent()" class="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-semibold transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-brand-cyan"></i>
-            <span>Refresh</span>
-          </button>
-        </div>
-
-        <div class="space-y-2">
+          <!-- Items Count & Live Feed Info -->
           <div class="flex items-center justify-between px-1">
-            <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <i data-lucide="list" class="w-3.5 h-3.5 text-brand-cyan"></i> All Series & Movies in Firestore
-            </span>
-            <span id="manageContentSummaryCount" class="text-xs text-brand-cyan font-mono font-bold">0 Items</span>
+            <div class="flex items-center gap-2">
+              <span id="manageViewModeLabel" class="text-xs font-extrabold text-white flex items-center gap-1.5">
+                <i data-lucide="layers" class="w-4 h-4 text-brand-cyan"></i> Grouped Series Overview
+              </span>
+              <span id="manageContentSummaryCount" class="text-xs text-brand-cyan font-mono font-bold">0 Series</span>
+            </div>
+            <span class="text-[11px] text-slate-400 font-mono hidden sm:inline">Click any series to expand episodes, edit metadata, or add next episode</span>
           </div>
-          <!-- Container where fetched Firestore documents are rendered with Title, Category, and Edit button -->
-          <div id="manageContentList" class="space-y-2.5 max-h-[58vh] overflow-y-auto pr-1"></div>
+
+          <!-- The Dynamic Content Render Area -->
+          <div id="manageContentList" class="space-y-3 pb-12"></div>
         </div>
+
+        <!-- TAB 2: BATCH UPLOAD TAB -->
+        <div id="adminTabUploadContent" class="hidden space-y-6">
+          <form id="adminUploadForm" onsubmit="handleBatchUpload(event)" class="space-y-4 glass-card p-6 rounded-2xl border border-white/10 shadow-lg">
+            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+              <h4 class="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <i data-lucide="upload-cloud" class="w-5 h-5 text-brand-cyan"></i> Upload New Episode or Movie to Firestore
+              </h4>
+              <button type="button" onclick="switchAdminStudioTab('manage')" class="text-xs text-brand-cyan hover:underline flex items-center gap-1">
+                <span>View Manage List</span> →
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="md:col-span-2">
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Series / Title Name *</label>
+                <input type="text" id="adminTitle" required placeholder="e.g., Solo Leveling: Arise" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-brand-cyan focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Category (Strict Mapping) *</label>
+                <select id="admin-category" onchange="handleCategoryChange()" required class="w-full bg-slate-900 border border-brand-cyan/40 rounded-xl px-3.5 py-2.5 text-xs text-brand-cyan font-bold focus:border-brand-cyan focus:outline-none cursor-pointer">
+                  <option value="Kdrama">Kdrama</option>
+                  <option value="Anime" selected>Anime</option>
+                  <option value="Chinese Drama">Chinese Drama</option>
+                  <option value="Movie">Movie</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4" id="adminSeasonEpisodeRow">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Season</label>
+                <input type="number" id="adminSeason" value="1" min="1" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Episode #</label>
+                <input type="number" id="adminEpisode" value="1" min="1" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Master Video Stream URL (.mp4 / .m3u8 HLS) *</label>
+                <input type="url" id="adminVideoUrl" required placeholder="https://vjs.zencdn.net/v/oceans.mp4" value="https://vjs.zencdn.net/v/oceans.mp4" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-brand-cyan focus:outline-none font-mono">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Thumbnail / Poster Image URL</label>
+                <input type="url" id="adminThumbUrl" placeholder="https://images.unsplash.com/photo-..." class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white focus:border-brand-cyan focus:outline-none font-mono">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Audio Tracks (Comma separated)</label>
+                <input type="text" id="adminAudioTracks" value="Japanese (Original), English Dub, Hindi" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">Subtitles (Comma separated)</label>
+                <input type="text" id="adminSubtitles" value="English CC, Spanish, Japanese, Hindi" class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Synopsis</label>
+              <textarea id="adminSynopsis" rows="2" placeholder="Brief synopsis or plot summary..." class="w-full bg-slate-900/90 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:border-brand-cyan focus:outline-none"></textarea>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10">
+              <div class="flex items-center gap-2 text-xs text-emerald-400 font-mono">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                <span>Direct Firestore Collection: showverse_episodes</span>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <button type="button" onclick="addToBatchQueue()" class="px-4 py-2.5 rounded-xl border border-brand-cyan/60 hover:bg-brand-cyan/10 text-brand-cyan font-bold text-xs transition flex items-center gap-2 cursor-pointer">
+                  <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                  <span>+ Add to Staging Queue</span>
+                </button>
+                <button type="button" onclick="uploadAllBatchToFirestore()" id="btnUploadAllBatch" class="px-6 py-2.5 bg-brand-cyan text-black font-extrabold text-xs rounded-xl shadow-neon-cyan hover:bg-cyan-300 transition flex items-center gap-2 cursor-pointer">
+                  <i data-lucide="rocket" class="w-4 h-4 fill-black"></i>
+                  <span>Upload Staged to Firestore</span>
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Staged Batch Queue Section -->
+          <div class="glass-card p-5 rounded-2xl border border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="layers" class="w-4 h-4 text-brand-cyan"></i>
+                <h4 class="text-xs font-black uppercase tracking-wider text-slate-200">STAGED BATCH QUEUE</h4>
+              </div>
+              <div class="flex items-center gap-3">
+                <span id="batchQueueCounter" class="text-xs text-brand-cyan font-mono font-bold">0 Items</span>
+                <button onclick="clearBatchQueue()" class="text-[11px] text-slate-400 hover:text-rose-400 transition cursor-pointer">Clear Queue</button>
+              </div>
+            </div>
+            <div id="stagedBatchQueueList" class="space-y-2 max-h-52 overflow-y-auto"></div>
+          </div>
+
+          <!-- Published Content History Section -->
+          <div class="glass-card p-5 rounded-2xl border border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
+                <h4 class="text-xs font-black uppercase tracking-wider text-white">RECENTLY PUBLISHED DOCUMENTS</h4>
+              </div>
+              <span id="publishedContentCounter" class="text-xs text-emerald-400 font-mono font-bold">Live Synced</span>
+            </div>
+            <div id="publishedContentList" class="space-y-2 max-h-64 overflow-y-auto"></div>
+          </div>
+        </div>
+
       </div>
-    </div>
+    </main>
   </div>
 
   <!-- DEDICATED EDIT CONTENT MODAL (STRICT DOCUMENT UPDATE CRUD) -->
@@ -1588,7 +1850,7 @@
   </div>
 
   <!-- MOBILE BOTTOM APP DOCK -->
-  <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 px-8 py-3 flex items-center justify-around">
+  <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-brand-dark/95 backdrop-blur-xl border-t border-white/10 px-6 py-2.5 flex items-center justify-around">
     <button onclick="filterCategoryView('All')" class="flex flex-col items-center gap-1 text-brand-cyan hover:text-white text-[11px] font-bold cursor-pointer transition">
       <i data-lucide="compass" class="w-5 h-5"></i>
       <span>Explore</span>
@@ -1596,6 +1858,10 @@
     <button onclick="openSearchModal()" class="flex flex-col items-center gap-1 text-slate-400 hover:text-brand-cyan text-[11px] font-bold cursor-pointer transition">
       <i data-lucide="search" class="w-5 h-5"></i>
       <span>Search</span>
+    </button>
+    <button onclick="openCreatorStudio()" id="bottomNavAdmin" class="hidden flex-col items-center gap-1 text-slate-300 hover:text-brand-cyan text-[11px] font-bold cursor-pointer transition" style="display: none;" title="Admin Studio">
+      <i data-lucide="clapperboard" class="w-5 h-5 text-brand-cyan"></i>
+      <span class="text-brand-cyan">Admin</span>
     </button>
     <button onclick="openMeModal()" id="bottomNavMe" class="flex flex-col items-center gap-1 text-slate-400 hover:text-brand-cyan text-[11px] font-bold cursor-pointer transition">
       <i data-lucide="user" class="w-5 h-5"></i>
@@ -1713,13 +1979,13 @@
   </div>
 
   <!-- SCRIPTS -->
-  <script type="module" src="/firebase.js"></script>
-  <script type="module" src="/auth.js"></script>
-  <script type="module" src="/admin.js"></script>
-  <script type="module" src="/watchLater.js"></script>
-  <script type="module" src="/comments.js"></script>
-  <script type="module" src="/player.js"></script>
-  <script type="module" src="/app.js"></script>
-  <script type="module" src="/init.js"></script>
+  <script type="module" src="./firebase.js"></script>
+  <script type="module" src="./auth.js"></script>
+  <script type="module" src="./admin.js"></script>
+  <script type="module" src="./watchLater.js"></script>
+  <script type="module" src="./comments.js"></script>
+  <script type="module" src="./player.js"></script>
+  <script type="module" src="./app.js"></script>
+  <script type="module" src="./init.js"></script>
 </body>
 </html>

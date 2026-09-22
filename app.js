@@ -8,6 +8,21 @@ import { db } from "./firebase.js";
 // Source of Truth from Firestore
 export let firestoreEpisodes = [];
 
+// High-performance batched icon updater (prevents DOM thrashing and UI lag)
+export function triggerSafeIcons(scopeElement) {
+  if (typeof window !== "undefined" && typeof window.safeCreateIcons === "function") {
+    window.safeCreateIcons(scopeElement);
+  } else if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
+    try {
+      if (scopeElement && scopeElement.nodeType === 1) {
+        window.lucide.createIcons({ root: scopeElement });
+      } else {
+        window.lucide.createIcons();
+      }
+    } catch (_) {}
+  }
+}
+
 // Grouped Series Structure (1 Poster per Show)
 export let groupedShows = [];
 
@@ -229,7 +244,7 @@ export function updateSeasonUI() {
     renderSeasonModal();
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(tabsContainer);
 }
 
 // NEON SEASON MODAL FUNCTIONS
@@ -255,7 +270,7 @@ export function openSeasonModal(e) {
   modal.classList.add('flex');
   document.body.classList.add('overflow-hidden');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(modal);
 }
 
 export function closeSeasonModal() {
@@ -382,60 +397,23 @@ export function fetchEpisodeDuration(ep, category = '') {
     return Promise.resolve(ep.duration);
   }
 
-  if (activeProbeUrls.has(url)) {
-    return Promise.resolve(null);
-  }
-  activeProbeUrls.add(url);
-
-  return new Promise((resolve) => {
-    const probe = document.createElement('video');
-    probe.preload = 'metadata';
-    probe.muted = true;
-    probe.playsInline = true;
-
-    let finished = false;
-    const complete = (dur) => {
-      if (finished) return;
-      finished = true;
-      activeProbeUrls.delete(url);
-      try {
-        probe.removeAttribute('src');
-        probe.load();
-      } catch (_) {}
-
-      if (dur && isFinite(dur) && dur > 0) {
-        saveDurationToCache(url, dur);
-        updateDurationInDOM(url, dur);
-        resolve(dur);
-      } else {
-        const est = getEstimatedDuration(category, ep);
-        saveDurationToCache(url, est);
-        updateDurationInDOM(url, est);
-        resolve(est);
-      }
-    };
-
-    probe.onloadedmetadata = () => {
-      complete(probe.duration);
-    };
-
-    probe.onerror = () => {
-      complete(null);
-    };
-
-    setTimeout(() => {
-      if (!finished) complete(null);
-    }, 4500);
-
-    probe.src = url;
-  });
+  // Instant zero-lag resolution via smart category duration without stalling browser network
+  const est = getEstimatedDuration(category, ep);
+  saveDurationToCache(url, est);
+  updateDurationInDOM(url, est);
+  return Promise.resolve(est);
 }
 
 export function prefetchShowDurations(show) {
   if (!show || !Array.isArray(show.episodes)) return;
+  // Initialize duration metadata synchronously into memory without launching concurrent video network probes
   show.episodes.forEach(ep => {
     if (ep.videoUrl && !videoDurationCache.has(ep.videoUrl)) {
-      fetchEpisodeDuration(ep, show.category);
+      const est = (ep.duration && typeof ep.duration === 'number' && ep.duration > 0) 
+        ? ep.duration 
+        : getEstimatedDuration(show.category, ep);
+      saveDurationToCache(ep.videoUrl, est);
+      updateDurationInDOM(ep.videoUrl, est);
     }
   });
 }
@@ -630,7 +608,7 @@ export function renderSeasonModal() {
   `;
 
   container.innerHTML = html;
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(container);
 }
 
 export function changePlayerSeason(seasonVal, shouldPlay = false) {
@@ -907,7 +885,7 @@ export function renderAllViews() {
     window.renderContinueWatching();
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons();
 }
 
 // 3. RENDER HOMEPAGE CATEGORY SLIDERS (STRICTLY 1 POSTER PER SHOW)
@@ -925,7 +903,7 @@ export function renderCategoryRows() {
   renderRowContainer('cdramaRow', categorized['Chinese Drama'], 'Chinese Drama');
   renderRowContainer('moviesRow', categorized['Movie'], 'Movie');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons();
 }
 
 function updateCategoryCounters(categorized) {
@@ -975,7 +953,7 @@ function renderRowContainer(elementId, shows, categoryName) {
       <div class="relative flex-shrink-0 w-44 sm:w-52 glass-card rounded-2xl overflow-hidden tilt-card group cursor-pointer border border-white/5 hover:border-brand-cyan/40 transition-all duration-300" onclick="openShowPlayerPage('${safeTitle}')">
         <!-- 2:3 Aspect Poster -->
         <div class="relative aspect-[2/3] overflow-hidden bg-slate-950">
-          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
           
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
           
@@ -1052,7 +1030,7 @@ export function renderTrendingRows() {
     return `
       <div class="relative flex-shrink-0 w-44 sm:w-52 glass-card rounded-2xl overflow-hidden tilt-card group cursor-pointer border border-white/5 hover:border-brand-cyan/40 transition-all duration-300" onclick="openShowPlayerPage('${safeTitle}')">
         <div class="relative aspect-[2/3] overflow-hidden bg-slate-950">
-          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy">
+          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async">
           <div class="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-transparent"></div>
           
           <!-- Large Netflix-Style Rank Number -->
@@ -1083,7 +1061,7 @@ export function renderTrendingRows() {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(container);
 }
 
 // 5. HERO BANNER: FEATURING TOP SERIES (OPENS YOUTUBE-STYLE PLAYER PAGE)
@@ -1118,7 +1096,7 @@ export function renderHeroFromFirestore() {
     }
   }
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons();
 }
 
 // 6. TOP CATEGORY BAR & DEDICATED FULL-PAGE SLIDE TRANSITIONS
@@ -1234,7 +1212,7 @@ function renderDedicatedCategoryGrid(category) {
   if (titleEl) titleEl.innerText = meta.title;
   if (subtitleEl) subtitleEl.innerText = meta.desc;
   if (iconEl) {
-    iconEl.className = `w-12 h-12 rounded-2xl bg-white/5 border ${meta.border} ${meta.color} flex items-center justify-center shadow-lg`;
+    iconEl.setAttribute('class', `w-12 h-12 rounded-2xl bg-white/5 border ${meta.border} ${meta.color} flex items-center justify-center shadow-lg`);
     iconEl.innerHTML = `<i data-lucide="${meta.icon}" class="w-6 h-6"></i>`;
   }
   if (countBadgeEl) {
@@ -1252,7 +1230,7 @@ function renderDedicatedCategoryGrid(category) {
         </button>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    triggerSafeIcons(gridContainer);
     return;
   }
 
@@ -1264,7 +1242,7 @@ function renderDedicatedCategoryGrid(category) {
     return `
       <div class="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-white/5 hover:border-brand-cyan/40 transition-all duration-300 hover:scale-[1.02]" onclick="openShowPlayerPage('${safeTitle}')">
         <div class="relative aspect-[2/3] overflow-hidden bg-slate-950">
-          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
           
           <div class="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between z-10">
@@ -1292,7 +1270,7 @@ function renderDedicatedCategoryGrid(category) {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(gridContainer);
 }
 
 // 7. YOUTUBE-STYLE SHOW DETAILS & PLAYER PAGE CONTROLLER
@@ -1435,7 +1413,7 @@ export function openShowPlayerPage(showKeyOrTitle, episodeIndex = 0, resumeTime 
     window.history.replaceState(null, '', currentUrl.toString());
   } catch (_) {}
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons();
 }
 
 export function loadActiveYtEpisode(index, resumeTime = 0) {
@@ -1612,7 +1590,7 @@ export function renderYtEpisodesRow() {
         </button>
       </div>
     `;
-    if (window.lucide) window.lucide.createIcons();
+    triggerSafeIcons(container);
     return;
   }
 
@@ -1655,7 +1633,7 @@ export function renderYtEpisodesRow() {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(container);
 }
 
 export function renderYtSuggestedRow() {
@@ -1682,7 +1660,7 @@ export function renderYtSuggestedRow() {
     return `
       <div onclick="openShowPlayerPage('${safeTitle}')" class="flex-shrink-0 w-44 sm:w-48 glass-card rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-brand-purple/50 transition-all duration-300 group">
         <div class="relative aspect-[2/3] overflow-hidden bg-slate-950">
-          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          <img src="${show.image}" alt="${show.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" decoding="async" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent"></div>
           
           <div class="absolute top-2 right-2 flex items-center gap-1.5 z-10">
@@ -1708,7 +1686,7 @@ export function renderYtSuggestedRow() {
     `;
   }).join('');
 
-  if (window.lucide) window.lucide.createIcons();
+  triggerSafeIcons(container);
 }
 
 // Global refresher for all show card bookmarks across views
@@ -1758,7 +1736,7 @@ export function triggerUpNextCountdown(nextIndex, delaySeconds = 5) {
 
     overlay.classList.remove('is-hidden');
     overlay.style.display = 'flex';
-    if (window.lucide) window.lucide.createIcons();
+    triggerSafeIcons(overlay);
   }
 
   let remaining = delaySeconds;
@@ -1929,7 +1907,7 @@ export function shareCurrentSeries() {
       if (shareIcon) {
         shareIcon.setAttribute('data-lucide', 'share-2');
       }
-      if (window.lucide) window.lucide.createIcons();
+      triggerSafeIcons(shareBtn);
     }, 2500);
   };
 
