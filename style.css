@@ -602,9 +602,10 @@ button:active, [role="button"]:active, .cursor-pointer:active,
    NEON CYBERPUNK MODAL & CONTROLS STYLES
    ======================================================== */
 .neon-modal-backdrop {
-  background: radial-gradient(circle at center, rgba(0, 240, 255, 0.12) 0%, rgba(6, 9, 20, 0.88) 60%, rgba(2, 3, 8, 0.96) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: radial-gradient(circle at center, rgba(0, 240, 255, 0.08) 0%, rgba(6, 9, 20, 0.94) 60%, rgba(2, 3, 8, 0.98) 100%);
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  will-change: opacity, transform;
 }
 
 .neon-card-cyan {

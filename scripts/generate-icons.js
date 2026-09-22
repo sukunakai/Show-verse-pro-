@@ -162,6 +162,42 @@ console.log('Created pwa-512x512.png');
 fs.writeFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'), createPNG(512, 512, (x, y, w, h) => getShowVersePixel(x, y, w, h, true)));
 console.log('Created pwa-maskable-512x512.png');
 
-// 180x180 iOS Apple Touch Icon
-fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), createPNG(180, 180, (x, y, w, h) => getShowVersePixel(x, y, w, h, false)));
-console.log('Created apple-touch-icon.png');
+// Generate Android icons if android directory exists
+const androidResDir = path.resolve('android', 'app', 'src', 'main', 'res');
+if (fs.existsSync(androidResDir)) {
+  console.log('Generating Android App Icons in:', androidResDir);
+  const mipmaps = [
+    { dir: 'mipmap-mdpi', iconSize: 48, fgSize: 108 },
+    { dir: 'mipmap-hdpi', iconSize: 72, fgSize: 162 },
+    { dir: 'mipmap-xhdpi', iconSize: 96, fgSize: 216 },
+    { dir: 'mipmap-xxhdpi', iconSize: 144, fgSize: 324 },
+    { dir: 'mipmap-xxxhdpi', iconSize: 192, fgSize: 432 }
+  ];
+
+  mipmaps.forEach(({ dir, iconSize, fgSize }) => {
+    const targetDir = path.join(androidResDir, dir);
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    // Standard icon
+    fs.writeFileSync(path.join(targetDir, 'ic_launcher.png'), createPNG(iconSize, iconSize, (x, y, w, h) => getShowVersePixel(x, y, w, h, false)));
+    // Round icon
+    fs.writeFileSync(path.join(targetDir, 'ic_launcher_round.png'), createPNG(iconSize, iconSize, (x, y, w, h) => getShowVersePixel(x, y, w, h, true)));
+    // Adaptive foreground
+    fs.writeFileSync(path.join(targetDir, 'ic_launcher_foreground.png'), createPNG(fgSize, fgSize, (x, y, w, h) => getShowVersePixel(x, y, w, h, true)));
+    console.log(`Generated Android icons for ${dir}`);
+  });
+
+  // Update ic_launcher_background.xml to dark navy
+  const valuesDir = path.join(androidResDir, 'values');
+  if (!fs.existsSync(valuesDir)) {
+    fs.mkdirSync(valuesDir, { recursive: true });
+  }
+  const bgXml = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="ic_launcher_background">#070c18</color>
+</resources>
+`;
+  fs.writeFileSync(path.join(valuesDir, 'ic_launcher_background.xml'), bgXml);
+  console.log('Updated ic_launcher_background.xml with dark background');
+}

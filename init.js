@@ -480,14 +480,20 @@ export function openMeModal() {
   }
   document.body.classList.add('overflow-hidden');
   updateActiveNavTab('me');
-  updateAuthUI(currentUser);
-  if (typeof window.renderMeWatchLater === 'function') {
-    window.renderMeWatchLater();
-  }
-  if (currentUser) {
-    renderWatchHistory();
-  }
-  if (window.lucide) window.lucide.createIcons();
+  
+  // High-performance non-blocking rendering using requestAnimationFrame
+  requestAnimationFrame(() => {
+    updateAuthUI(currentUser);
+    if (typeof window.renderMeWatchLater === 'function') {
+      window.renderMeWatchLater();
+    }
+    if (currentUser) {
+      renderWatchHistory();
+    }
+    if (el) {
+      safeCreateIcons(el);
+    }
+  });
 }
 
 export function closeMeModal() {
@@ -540,11 +546,15 @@ export function openSearchModal() {
   }
   document.body.classList.add('overflow-hidden');
   updateActiveNavTab('search');
-  const input = document.getElementById('searchInput');
-  if (input) {
-    input.focus();
-  }
-  handleSearchQuery(input ? input.value : '');
+  
+  // Instant open, focus and query on next frame
+  requestAnimationFrame(() => {
+    const input = document.getElementById('searchInput');
+    if (input) {
+      input.focus();
+      handleSearchQuery(input.value || '');
+    }
+  });
 }
 
 export function closeSearchModal() {
