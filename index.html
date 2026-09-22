@@ -9,7 +9,15 @@
   <meta property="og:description" content="A futuristic video streaming platform with ambient cinematic player, video player stretch and crop scaling modes (Fit, Stretch, Crop, Cinema), season selector, series sequence autoplay, resume playback, offline downloads hub, personal Watch Later list with Firestore sync, and creator studio." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300F0FF'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>" />
+  
+  <!-- Progressive Web App (PWA) Meta & Icons -->
+  <meta name="theme-color" content="#070c18" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="ShowVerse" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   
   <!-- Google Fonts: Syne & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -223,16 +231,24 @@
 <body class="bg-brand-dark text-slate-100 font-sans antialiased selection:bg-brand-cyan selection:text-black min-h-screen">
 
   <!-- TOP NAVIGATION BAR -->
-  <header id="mainNav" class="fixed top-0 left-0 right-0 z-40 glass-nav transition-all duration-300 px-4 md:px-12 py-3.5 flex items-center justify-between">
-    <!-- Brand Logo (Left) -->
-    <a href="#" onclick="filterCategoryView('All')" class="flex items-center gap-2.5 group">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-cyan via-brand-purple to-brand-magenta p-0.5 shadow-neon-cyan group-hover:scale-105 transition duration-300">
-        <div class="w-full h-full bg-brand-dark rounded-[10px] flex items-center justify-center">
-          <i data-lucide="play" class="w-4 h-4 text-brand-cyan fill-brand-cyan"></i>
+  <header id="mainNav" class="fixed top-0 left-0 right-0 z-40 glass-nav transition-all duration-300 px-4 md:px-12 py-3 flex items-center justify-between">
+    <!-- Brand Logo & Explore (Left) -->
+    <div class="flex items-center gap-3 sm:gap-4">
+      <a href="#" onclick="navigateExplore(); return false;" class="flex items-center gap-2.5 group cursor-pointer" title="Go to Home / Explore">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-cyan via-brand-purple to-brand-magenta p-0.5 shadow-neon-cyan group-hover:scale-105 transition duration-300">
+          <div class="w-full h-full bg-brand-dark rounded-[10px] flex items-center justify-center">
+            <i data-lucide="play" class="w-4 h-4 text-brand-cyan fill-brand-cyan"></i>
+          </div>
         </div>
-      </div>
-      <span class="text-xl font-black tracking-wider text-white">SHOW<span class="text-brand-cyan">VERSE</span></span>
-    </a>
+        <span class="text-xl font-black tracking-wider text-white">SHOW<span class="text-brand-cyan">VERSE</span></span>
+      </a>
+
+      <!-- Dedicated Explore Button in Header -->
+      <button onclick="navigateExplore()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan hover:text-white transition cursor-pointer text-xs font-black shadow-sm" title="Explore Shows">
+        <i data-lucide="compass" class="w-3.5 h-3.5"></i>
+        <span>Explore</span>
+      </button>
+    </div>
 
     <!-- Center Quick Search Bar -->
     <div class="hidden md:flex items-center flex-1 max-w-md mx-8">
@@ -245,14 +261,16 @@
       </div>
     </div>
 
-    <!-- User Profile (Me) Avatar (Right) -->
-    <div class="flex items-center gap-2.5">
-      <button onclick="openSearchModal()" class="md:hidden p-2 rounded-full bg-white/5 text-slate-300 hover:text-white" title="Search">
-        <i data-lucide="search" class="w-4 h-4"></i>
+    <!-- Right Controls: Search, Watch Later, Admin, Me -->
+    <div class="flex items-center gap-2 sm:gap-2.5">
+      <!-- Search Button (Always visible on mobile & tablet) -->
+      <button onclick="openSearchModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white transition cursor-pointer text-xs font-bold" title="Search">
+        <i data-lucide="search" class="w-3.5 h-3.5 text-brand-cyan"></i>
+        <span class="text-xs font-semibold">Search</span>
       </button>
 
       <!-- Quick Access: Watch Later Button -->
-      <button id="navWatchLaterBtn" onclick="openWatchLaterModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-cyan/40 text-slate-300 hover:text-white transition cursor-pointer text-xs font-bold" title="Open My Watch Later List (Firestore)">
+      <button id="navWatchLaterBtn" onclick="openWatchLaterModal()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-cyan/40 text-slate-300 hover:text-white transition cursor-pointer text-xs font-bold" title="Open My Watch Later List (Firestore)">
         <i data-lucide="bookmark" class="w-3.5 h-3.5 text-brand-cyan"></i>
         <span class="hidden sm:inline">Watch Later</span>
         <span id="navWatchLaterBadge" class="min-w-[18px] h-4.5 px-1 rounded-full bg-white/10 text-slate-400 text-[10px] font-bold flex items-center justify-center font-mono">0</span>
@@ -261,16 +279,16 @@
       <!-- Full Tab Admin Option (Hidden by default; unhidden ONLY when signed in with authorized admin email) -->
       <button id="navAdminBtn" onclick="openCreatorStudio()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-full bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 text-brand-cyan hover:text-white transition cursor-pointer text-xs font-black shadow-sm" style="display: none;" title="Admin Studio & Content Manager">
         <i data-lucide="clapperboard" class="w-3.5 h-3.5 text-brand-cyan"></i>
-        <span class="hidden md:inline">Admin Studio</span>
+        <span class="hidden md:inline">Admin</span>
         <span class="w-1.5 h-1.5 rounded-full bg-brand-cyan animate-pulse"></span>
       </button>
 
-      <button id="profileMenuBtn" onclick="openMeModal()" class="flex items-center gap-2.5 p-1.5 pl-2 pr-3 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-cyan/40 transition cursor-pointer" title="Profile (Me)">
-        <div class="w-7 h-7 rounded-full bg-white/10 text-slate-300 flex items-center justify-center font-bold text-xs" id="navAvatar">
-          ?
+      <!-- Me Button (Always visible on all screens) -->
+      <button id="profileMenuBtn" onclick="openMeModal()" class="flex items-center gap-2 p-1.5 pl-2 pr-3 rounded-full bg-brand-cyan/15 hover:bg-brand-cyan/25 border border-brand-cyan/40 hover:border-brand-cyan text-white transition cursor-pointer shadow-sm" title="Profile (Me)">
+        <div class="w-6 h-6 rounded-full bg-brand-cyan/30 text-brand-cyan flex items-center justify-center font-bold text-xs" id="navAvatar">
+          <i data-lucide="user" class="w-3.5 h-3.5"></i>
         </div>
-        <span class="text-xs font-semibold hidden sm:inline text-slate-200" id="navUsername">Guest</span>
-        <i data-lucide="user" class="w-3.5 h-3.5 text-slate-400"></i>
+        <span class="text-xs font-bold text-white tracking-wide" id="navUsername">Me</span>
       </button>
     </div>
   </header>
@@ -1968,6 +1986,46 @@
       </div>
     </div>
   </div>
+
+  <!-- ======================================================== -->
+  <!-- PERSISTENT BOTTOM NAVIGATION BAR (EXPLORE, SEARCH, ME) -->
+  <!-- Always visible on mobile, tablet, and desktop -->
+  <!-- ======================================================== -->
+  <nav id="persistentBottomNav" class="fixed bottom-0 left-0 right-0 z-40 bg-brand-dark/95 backdrop-blur-2xl border-t border-white/10 px-3 py-2 flex items-center justify-around sm:justify-center sm:gap-14 shadow-[0_-8px_30px_rgba(0,0,0,0.8)] select-none">
+    
+    <!-- Explore Tab (Always Visible) -->
+    <button id="bottomNav-explore" onclick="navigateExplore()" class="flex flex-col items-center justify-center gap-1 py-1 px-4 text-brand-cyan transition-all duration-200 cursor-pointer group active:scale-95" title="Explore Shows">
+      <div class="relative">
+        <i data-lucide="compass" class="w-5 h-5 transition-transform group-hover:scale-110 drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]"></i>
+      </div>
+      <span class="text-[11px] font-extrabold tracking-wide uppercase text-brand-cyan">Explore</span>
+    </button>
+
+    <!-- Search Tab (Always Visible) -->
+    <button id="bottomNav-search" onclick="openSearchModal()" class="flex flex-col items-center justify-center gap-1 py-1 px-4 text-slate-400 hover:text-white transition-all duration-200 cursor-pointer group active:scale-95" title="Search Series & Movies">
+      <div class="relative">
+        <i data-lucide="search" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+      </div>
+      <span class="text-[11px] font-extrabold tracking-wide uppercase text-slate-400">Search</span>
+    </button>
+
+    <!-- Watchlist Tab (Always Visible) -->
+    <button id="bottomNav-watchLater" onclick="openWatchLaterModal()" class="flex flex-col items-center justify-center gap-1 py-1 px-4 text-slate-400 hover:text-white transition-all duration-200 cursor-pointer group active:scale-95" title="Watch Later List">
+      <div class="relative">
+        <i data-lucide="bookmark" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+        <span id="bottomWatchLaterBadge" class="hidden absolute -top-1.5 -right-2.5 min-w-[15px] h-3.5 px-1 rounded-full bg-brand-cyan text-brand-dark text-[9px] font-black flex items-center justify-center font-mono">0</span>
+      </div>
+      <span class="text-[11px] font-extrabold tracking-wide uppercase text-slate-400">Watchlist</span>
+    </button>
+
+    <!-- Me Tab (Always Visible) -->
+    <button id="bottomNav-me" onclick="openMeModal()" class="flex flex-col items-center justify-center gap-1 py-1 px-4 text-slate-400 hover:text-white transition-all duration-200 cursor-pointer group active:scale-95" title="Account & Library (Me)">
+      <div class="relative">
+        <i data-lucide="user" class="w-5 h-5 transition-transform group-hover:scale-110"></i>
+      </div>
+      <span class="text-[11px] font-extrabold tracking-wide uppercase text-slate-400">Me</span>
+    </button>
+  </nav>
 
   <!-- TOAST NOTIFICATION -->
   <div id="toast" class="fixed bottom-20 md:bottom-8 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300">

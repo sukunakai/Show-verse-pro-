@@ -183,6 +183,16 @@ export function updateNavWatchLaterBadge() {
     }
   }
 
+  const bottomBadge = document.getElementById('bottomWatchLaterBadge');
+  if (bottomBadge) {
+    bottomBadge.innerText = count;
+    if (count > 0) {
+      bottomBadge.classList.remove('hidden');
+    } else {
+      bottomBadge.classList.add('hidden');
+    }
+  }
+
   const meBadge = document.getElementById('meWatchLaterBadge');
   if (meBadge) {
     meBadge.innerText = `${count} ${count === 1 ? 'Show' : 'Shows'}`;
@@ -662,6 +672,9 @@ export function openWatchLaterModal() {
     modal.classList.add('flex');
     if (document.body) document.body.classList.add('overflow-hidden');
     renderWatchLaterModal();
+    if (typeof window.updateActiveNavTab === 'function') {
+      window.updateActiveNavTab('watchLater');
+    }
   }
 }
 
@@ -671,6 +684,9 @@ export function closeWatchLaterModal() {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     if (document.body) document.body.classList.remove('overflow-hidden');
+    if (typeof window.updateActiveNavTab === 'function') {
+      window.updateActiveNavTab('explore');
+    }
   }
 }
 

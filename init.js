@@ -412,6 +412,66 @@ export function formatTime(seconds) {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+export function updateActiveNavTab(tabName) {
+  const tabs = ['explore', 'search', 'watchLater', 'me'];
+  tabs.forEach(t => {
+    const el = document.getElementById(`bottomNav-${t}`);
+    if (!el) return;
+    const label = el.querySelector('span');
+    const icon = el.querySelector('i, svg');
+    if (t === tabName) {
+      el.classList.add('text-brand-cyan');
+      el.classList.remove('text-slate-400');
+      if (label) {
+        label.classList.add('text-brand-cyan');
+        label.classList.remove('text-slate-400');
+      }
+      if (icon) {
+        icon.classList.add('text-brand-cyan');
+        icon.classList.add('drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]');
+      }
+    } else {
+      el.classList.remove('text-brand-cyan');
+      el.classList.add('text-slate-400');
+      if (label) {
+        label.classList.remove('text-brand-cyan');
+        label.classList.add('text-slate-400');
+      }
+      if (icon) {
+        icon.classList.remove('text-brand-cyan');
+        icon.classList.remove('drop-shadow-[0_0_8px_rgba(0,240,255,0.6)]');
+      }
+    }
+  });
+}
+
+export function navigateExplore() {
+  if (typeof window.closeMeModal === 'function') window.closeMeModal();
+  if (typeof window.closeSearchModal === 'function') window.closeSearchModal();
+  if (typeof window.closeWatchLaterModal === 'function') window.closeWatchLaterModal();
+  if (typeof window.closeCreatorStudio === 'function') window.closeCreatorStudio();
+  if (typeof window.closeDownloadsModal === 'function') window.closeDownloadsModal();
+  
+  const showPlayerPage = document.getElementById('showPlayerPage');
+  if (showPlayerPage && !showPlayerPage.classList.contains('hidden')) {
+    if (typeof window.handlePlayerBack === 'function') {
+      window.handlePlayerBack();
+    }
+  }
+  
+  const dedicatedCategoryView = document.getElementById('dedicatedCategoryView');
+  const homeView = document.getElementById('homeView');
+  if (dedicatedCategoryView) dedicatedCategoryView.classList.add('hidden');
+  if (homeView) homeView.classList.remove('hidden');
+
+  if (typeof window.filterCategoryView === 'function') {
+    window.filterCategoryView('All');
+  }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  updateActiveNavTab('explore');
+}
+
 export function openMeModal() {
   const el = document.getElementById('meModal');
   if (el) {
@@ -419,6 +479,7 @@ export function openMeModal() {
     el.scrollTop = 0;
   }
   document.body.classList.add('overflow-hidden');
+  updateActiveNavTab('me');
   updateAuthUI(currentUser);
   if (typeof window.renderMeWatchLater === 'function') {
     window.renderMeWatchLater();
@@ -433,6 +494,7 @@ export function closeMeModal() {
   const el = document.getElementById('meModal');
   if (el) el.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
+  updateActiveNavTab('explore');
 }
 
 export function openDownloadsModal() {
@@ -477,6 +539,7 @@ export function openSearchModal() {
     modal.scrollTop = 0;
   }
   document.body.classList.add('overflow-hidden');
+  updateActiveNavTab('search');
   const input = document.getElementById('searchInput');
   if (input) {
     input.focus();
@@ -488,6 +551,7 @@ export function closeSearchModal() {
   const modal = document.getElementById('searchModal');
   if (modal) modal.classList.add('hidden');
   document.body.classList.remove('overflow-hidden');
+  updateActiveNavTab('explore');
 }
 
 export function setSearchTerm(term) {
@@ -587,6 +651,8 @@ if (typeof window !== "undefined") {
   window.removeFromWatchHistory = removeFromWatchHistory;
   window.renderWatchHistory = renderWatchHistory;
   window.enforceSecretAdminRule = enforceSecretAdminRule;
+  window.navigateExplore = navigateExplore;
+  window.updateActiveNavTab = updateActiveNavTab;
   window.playMedia = playMedia;
   window.closePlayer = closePlayer;
   window.openMeModal = openMeModal;
@@ -625,6 +691,22 @@ if (typeof window !== "undefined") {
 
 if (typeof document !== "undefined") {
   document.addEventListener('DOMContentLoaded', () => {
+    // Completely unregister any old service workers or cached PWA assets
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      }).catch(() => {});
+    }
+    if (typeof caches !== 'undefined') {
+      caches.keys().then(keys => {
+        for (const key of keys) {
+          caches.delete(key);
+        }
+      }).catch(() => {});
+    }
+
     enforceSecretAdminRule(currentUser);
     renderContinueWatching();
     safeCreateIcons();
