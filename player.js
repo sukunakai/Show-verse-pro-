@@ -451,14 +451,6 @@ export function injectPlyrAspectControls(plyr) {
           </svg>
           <span id="plyrStageBoostText" class="font-mono text-[10px] font-black uppercase tracking-wider text-amber-300">200%</span>
         </button>
-        <!-- Aspect Scaling Button -->
-        <button type="button" class="plyr__stage-btn plyr__stage-aspect-btn" title="Cycle Aspect Ratio (Fit, Stretch, Crop, Cinema) - Shortcut C">
-          <svg class="w-3.5 h-3.5 text-brand-cyan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;">
-            <path d="M6.13 1L6 16a2 2 0 0 0 2 2h15"></path>
-            <path d="M1 6.13L16 6a2 2 0 0 1 2 2v15"></path>
-          </svg>
-          <span id="plyrStageAspectText" class="font-mono text-[10px] font-black uppercase tracking-wider text-brand-cyan">${config.short}</span>
-        </button>
       </div>
     `;
 
@@ -466,7 +458,9 @@ export function injectPlyrAspectControls(plyr) {
     if (backBtn) {
       backBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (typeof window.closeShowPlayerPage === 'function') {
+        if (typeof window.handlePlayerBack === 'function') {
+          window.handlePlayerBack(e);
+        } else if (typeof window.closeShowPlayerPage === 'function') {
           window.closeShowPlayerPage();
         }
       });
@@ -477,14 +471,6 @@ export function injectPlyrAspectControls(plyr) {
       boostBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggle200PercentBoost();
-      });
-    }
-
-    const aspectBtn = topBar.querySelector('.plyr__stage-aspect-btn');
-    if (aspectBtn) {
-      aspectBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cycleVideoAspectMode(e);
       });
     }
 

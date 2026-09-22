@@ -373,16 +373,43 @@ video.video-scale-cinema,
 /* Mobile & Tablet Landscape Optimization ("landscape jab tab bhi") */
 @media (orientation: landscape) and (max-height: 620px) {
   #showPlayerPage {
-    padding: 0 !important;
-    margin: 0 !important;
+    padding-top: max(12px, env(safe-area-inset-top)) !important;
+    padding-bottom: 28px !important;
+    padding-left: max(14px, env(safe-area-inset-left)) !important;
+    padding-right: max(14px, env(safe-area-inset-right)) !important;
+    margin: 0 auto !important;
     background: #000000 !important;
   }
   #showPlayerPage > div {
     max-width: 100% !important;
     padding: 0 !important;
-    margin: 0 !important;
   }
   #ytPlayerStage {
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    height: auto !important;
+    max-height: 82vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    aspect-ratio: 16 / 9 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+  }
+  #ytPlayerStage .plyr {
+    border-radius: 12px !important;
+    height: 100% !important;
+    width: 100% !important;
+  }
+  #ytPlayerStage .plyr__video-wrapper {
+    height: 100% !important;
+    width: 100% !important;
+    padding-bottom: 0 !important;
+  }
+  /* Edge-to-edge only when truly in Fullscreen */
+  #ytPlayerStage:fullscreen,
+  #ytPlayerStage:-webkit-full-screen,
+  .plyr--fullscreen-active #ytPlayerStage,
+  .plyr--fullscreen-active .plyr__video-wrapper {
     border-radius: 0 !important;
     border: none !important;
     height: 100vh !important;
@@ -390,18 +417,6 @@ video.video-scale-cinema,
     width: 100vw !important;
     max-width: 100vw !important;
     aspect-ratio: auto !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  #ytPlayerStage .plyr {
-    border-radius: 0 !important;
-    height: 100vh !important;
-    width: 100vw !important;
-  }
-  #ytPlayerStage .plyr__video-wrapper {
-    height: 100vh !important;
-    width: 100vw !important;
-    padding-bottom: 0 !important;
   }
   .plyr__controls {
     padding: 8px max(20px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)) !important;

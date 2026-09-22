@@ -1834,6 +1834,67 @@ export function switchYtEpisode(index) {
   }
 }
 
+export function handlePlayerBack(event) {
+  if (event) {
+    if (typeof event.preventDefault === 'function') event.preventDefault();
+    if (typeof event.stopPropagation === 'function') event.stopPropagation();
+  }
+
+  // 1. If currently in Fullscreen, exit fullscreen to return to the embedded player view without destroying the player!
+  const isFullscreen = !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    (window.activePlyr && window.activePlyr.fullscreen && window.activePlyr.fullscreen.active)
+  );
+
+  if (isFullscreen) {
+    if (window.activePlyr && window.activePlyr.fullscreen && window.activePlyr.fullscreen.active) {
+      window.activePlyr.fullscreen.exit();
+    }
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    }
+
+    const stage = document.getElementById('ytPlayerStage');
+    if (stage) {
+      stage.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    }
+    if (window.showToast) window.showToast("Back in player view");
+    return;
+  }
+
+  // 2. If the user is scrolled down in showPlayerPage (viewing episodes, comments, details)
+  // return smoothly to the video player stage so the player is front and center ("player me aa jaye, poora cut na ho")
+  const stage = document.getElementById('ytPlayerStage');
+  const scrollPos = window.pageYOffset || document.documentElement.scrollTop || 0;
+  if (stage) {
+    const stageRect = stage.getBoundingClientRect();
+    if (stageRect.top < -100 || scrollPos > 220) {
+      stage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (window.showToast) window.showToast("Returned to Player");
+      return;
+    }
+  }
+
+  // 3. If in Landscape mobile view where the player filled the screen:
+  // Scroll down to the episodes section so they can choose other episodes without cutting off the player
+  const isLandscape = window.matchMedia && window.matchMedia('(orientation: landscape) and (max-height: 620px)').matches;
+  if (isLandscape) {
+    const epSection = document.getElementById('ytEpisodesSection') || document.getElementById('showDetailsSection');
+    if (epSection && (!stage || stage.getBoundingClientRect().top >= -50)) {
+      epSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (window.showToast) window.showToast("Episodes & Details");
+      return;
+    }
+  }
+
+  // 4. If already at the top of the player and not in fullscreen:
+  // Cleanly navigate back to browse/home
+  closeShowPlayerPage();
+}
+
 export function closeShowPlayerPage() {
   cancelUpNext();
   if (typeof window.destroyCurrentPlayer === 'function') {
@@ -2091,6 +2152,7 @@ if (typeof window !== "undefined") {
   window.normalizeCategory = normalizeCategory;
   window.groupEpisodesIntoShows = groupEpisodesIntoShows;
   window.openShowPlayerPage = openShowPlayerPage;
+  window.handlePlayerBack = handlePlayerBack;
   window.closeShowPlayerPage = closeShowPlayerPage;
   window.triggerUpNextCountdown = triggerUpNextCountdown;
   window.playNextEpisodeImmediately = playNextEpisodeImmediately;
