@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAuthorizedAdmin() {
+      return isSignedIn() && request.auth.token.email == 'vimleshkumar901559@gmail.com';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Published episodes for Show Verse
+    match /showverse_episodes/{episodeId} {
+      allow read: if true;
+      allow write: if isAuthorizedAdmin();
+    }
+
+    // User's personal Watch Later list in Firestore
+    match /users/{userId}/watch_later/{showId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn() 
+        && request.auth.uid == userId 
+        && isValidId(showId)
+        && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Episode & Series Comments for Show Verse
+    match /showverse_comments/{commentId} {
+      allow read: if true;
+      allow create: if request.resource.data.content is string 
+        && request.resource.data.content.size() > 0 
+        && request.resource.data.content.size() <= 2000;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy']);
+      allow delete: if isAuthorizedAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+  }
+}

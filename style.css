@@ -1,0 +1,485 @@
+/* ========================================================
+   SHOW VERSE - MODERN VIDEO PLAYER & CONTROLS STYLES
+   ======================================================== */
+
+/* High z-index hierarchy for video player modal */
+#playerModal {
+  z-index: 9999;
+  transition: opacity 0.3s ease;
+}
+
+/* Category Horizontal Sliders */
+.category-slider-row {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.category-slider-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* YouTube-Style Embedded Player Stage & Ambient Glow */
+.yt-player-glow {
+  box-shadow: 0 20px 60px -15px rgba(0, 240, 255, 0.25), 0 0 40px -10px rgba(112, 0, 255, 0.25);
+  transition: box-shadow 0.4s ease;
+}
+
+/* Global mobile overflow prevention & zero empty screen margins */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+#showPlayerPage {
+  max-width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+#ytPlayerStage, #playerStage {
+  position: relative;
+  overflow: hidden;
+  background-color: #000 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+#ytPlayerStage video, #playerStage video, .plyr video, .plyr__video-wrapper, .plyr {
+  background-color: #000 !important;
+}
+
+/* Completely suppress any video poster image */
+.plyr__poster, video::poster {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  background-image: none !important;
+}
+
+/* Audio Equalizer Bars for Active Episode */
+@keyframes eqBounce {
+  0%, 100% { height: 4px; }
+  50% { height: 16px; }
+}
+.eq-bar-1 { animation: eqBounce 0.8s ease-in-out infinite; }
+.eq-bar-2 { animation: eqBounce 0.8s ease-in-out 0.2s infinite; }
+.eq-bar-3 { animation: eqBounce 0.8s ease-in-out 0.4s infinite; }
+
+/* Sticky Top Category Navigation */
+#topCategoryBar {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Compact Episode Selector Buttons */
+.episode-selector-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.episode-selector-btn.is-active {
+  border-color: #00F0FF !important;
+  color: #00F0FF !important;
+  background-color: rgba(0, 240, 255, 0.18) !important;
+  box-shadow: 0 0 20px rgba(0, 240, 255, 0.6), inset 0 0 10px rgba(0, 240, 255, 0.2) !important;
+  transform: scale(1.06);
+}
+
+/* Plyr Custom Theme Adjustments */
+.plyr--video {
+  border-radius: 1.25rem;
+  overflow: hidden;
+  height: 100%;
+}
+.plyr__video-wrapper {
+  background: #000;
+  height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+}
+
+/* Base Video Sizing & Smooth Aspect Transitions */
+.plyr video,
+#ytPlayerStage video,
+#playerStage video {
+  width: 100% !important;
+  height: 100% !important;
+  transition: transform 0.28s cubic-bezier(0.2, 0, 0, 1), object-fit 0.2s ease;
+}
+
+/* Ensure plyr video-wrapper does not restrict video stretching in any mode */
+.plyr--fullscreen-active .plyr__video-wrapper,
+:fullscreen .plyr__video-wrapper,
+:-webkit-full-screen .plyr__video-wrapper,
+.video-scale-stretch .plyr__video-wrapper,
+.video-scale-crop .plyr__video-wrapper,
+.video-scale-cinema .plyr__video-wrapper {
+  height: 100% !important;
+  width: 100% !important;
+  padding-bottom: 0 !important;
+  max-height: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 1. Fit Mode (Default: Contain with native aspect ratio) */
+.video-scale-fit video,
+.video-scale-fit .plyr video,
+video.video-scale-fit,
+.plyr.video-scale-fit video,
+.plyr--fullscreen-active.video-scale-fit video,
+:fullscreen.video-scale-fit video,
+:-webkit-full-screen.video-scale-fit video {
+  object-fit: contain !important;
+  transform: scale(1) !important;
+}
+
+/* 2. Stretch Mode (Fills 100% stage/screen, zero black bars, stretches aspect) */
+.video-scale-stretch video,
+.video-scale-stretch .plyr video,
+video.video-scale-stretch,
+.plyr.video-scale-stretch video,
+.plyr--fullscreen-active.video-scale-stretch video,
+:fullscreen.video-scale-stretch video,
+:-webkit-full-screen.video-scale-stretch video {
+  object-fit: fill !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: scale(1) !important;
+}
+
+/* 3. Crop Mode (Cover / Zoom to fill edge-to-edge, zero bars, keeps aspect) */
+.video-scale-crop video,
+.video-scale-crop .plyr video,
+video.video-scale-crop,
+.plyr.video-scale-crop video,
+.plyr--fullscreen-active.video-scale-crop video,
+:fullscreen.video-scale-crop video,
+:-webkit-full-screen.video-scale-crop video {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: scale(1) !important;
+}
+
+/* 4. Cinema Mode (21:9 Ultrawide zoom crop) */
+.video-scale-cinema video,
+.video-scale-cinema .plyr video,
+video.video-scale-cinema,
+.plyr.video-scale-cinema video,
+.plyr--fullscreen-active.video-scale-cinema video,
+:fullscreen.video-scale-cinema video,
+:-webkit-full-screen.video-scale-cinema video {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+  transform: scale(1.18) !important;
+}
+
+/* Custom Plyr Aspect Toggle Button in bottom control bar */
+.plyr__control--aspect-toggle {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 5px 8px !important;
+  gap: 4px !important;
+  cursor: pointer !important;
+}
+.plyr__aspect-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  color: #00F0FF !important;
+  background: rgba(0, 240, 255, 0.15) !important;
+  border: 1px solid rgba(0, 240, 255, 0.35) !important;
+  border-radius: 4px !important;
+  padding: 1px 4px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: uppercase !important;
+  line-height: 1.2 !important;
+}
+
+/* Floating on-player aspect button (Visible in Fullscreen & Landscape) */
+.plyr__floating-aspect-btn {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  z-index: 45 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 11px !important;
+  border-radius: 12px !important;
+  background: rgba(10, 10, 15, 0.78) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  color: #f1f5f9 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55) !important;
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.2s ease, border-color 0.2s ease !important;
+  user-select: none !important;
+}
+.plyr__floating-aspect-btn:hover {
+  background: rgba(10, 10, 15, 0.95) !important;
+  border-color: rgba(0, 240, 255, 0.6) !important;
+  color: #00F0FF !important;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.35) !important;
+}
+/* On-Stage Quick Stretch/Crop Button Auto-Hide (Hides after 3s of idle screen/touch) */
+#ytStageAspectBtn {
+  transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.35s ease !important;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+#ytStageAspectBtn.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-8px) scale(0.92) !important;
+}
+
+.plyr__floating-aspect-btn.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-8px) scale(0.92) !important;
+}
+
+.plyr--hide-controls .plyr__floating-aspect-btn {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-8px) !important;
+}
+.plyr:not(.plyr--hide-controls) .plyr__floating-aspect-btn {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translateY(0) !important;
+}
+
+/* Video Stage Aspect HUD notification */
+.video-aspect-hud {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px) scale(0.9);
+  z-index: 55;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.video-aspect-hud.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Mobile & Tablet Landscape Optimization ("landscape jab tab bhi") */
+@media (orientation: landscape) and (max-height: 580px) {
+  #showPlayerPage {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #showPlayerPage > div {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  #ytPlayerStage {
+    border-radius: 0 !important;
+    border: none !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    aspect-ratio: auto !important;
+  }
+  #ytPlayerStage .plyr {
+    border-radius: 0 !important;
+    height: 100vh !important;
+    width: 100vw !important;
+  }
+  #ytPlayerStage .plyr__video-wrapper {
+    height: 100vh !important;
+    width: 100vw !important;
+    padding-bottom: 0 !important;
+  }
+  .plyr__floating-aspect-btn {
+    top: 10px !important;
+    right: 10px !important;
+    padding: 7px 12px !important;
+    background: rgba(10, 10, 15, 0.88) !important;
+    border-color: rgba(0, 240, 255, 0.45) !important;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.28) !important;
+  }
+}
+
+.plyr__control--overlaid {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+.plyr__control--overlaid:focus, .plyr__control--overlaid:hover {
+  background: #00F0FF !important;
+  color: #000000 !important;
+}
+.plyr__menu__container .plyr__control[role=menuitemradio][aria-checked=true]::before {
+  background: #00F0FF !important;
+}
+
+/* Video Buffering and Loading Spinner Overlay */
+.video-spinner-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #000000 !important;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease-in-out, visibility 0.22s ease-in-out;
+  pointer-events: none !important;
+}
+.video-spinner-overlay * {
+  pointer-events: none !important;
+}
+.video-spinner-overlay.is-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Player Visible Error Overlay */
+.player-error-overlay {
+  transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+}
+.player-error-overlay.is-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Up Next Autoplay Sequence Countdown Overlay */
+.up-next-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out;
+}
+.up-next-overlay.is-hidden {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* ========================================================
+   NEON CYBERPUNK MODAL & CONTROLS STYLES
+   ======================================================== */
+.neon-modal-backdrop {
+  background: radial-gradient(circle at center, rgba(0, 240, 255, 0.12) 0%, rgba(6, 9, 20, 0.88) 60%, rgba(2, 3, 8, 0.96) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.neon-card-cyan {
+  background: linear-gradient(135deg, rgba(10, 18, 30, 0.96) 0%, rgba(6, 10, 18, 0.98) 100%);
+  border: 1.5px solid rgba(0, 240, 255, 0.55);
+  box-shadow: 0 0 35px rgba(0, 240, 255, 0.3), inset 0 0 20px rgba(0, 240, 255, 0.12);
+}
+
+.neon-card-cyan:hover {
+  border-color: #00F0FF;
+  box-shadow: 0 0 45px rgba(0, 240, 255, 0.5), inset 0 0 25px rgba(0, 240, 255, 0.2);
+}
+
+.neon-radio-active {
+  position: relative;
+  border-color: #00F0FF !important;
+  background: rgba(0, 240, 255, 0.15) !important;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.85), inset 0 0 8px rgba(0, 240, 255, 0.5) !important;
+}
+
+.neon-radio-active::after {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #00F0FF;
+  box-shadow: 0 0 10px #00F0FF, 0 0 20px #00F0FF;
+}
+
+.neon-text-glow {
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.85), 0 0 24px rgba(0, 240, 255, 0.45);
+}
+
+.neon-text-purple {
+  text-shadow: 0 0 12px rgba(168, 85, 247, 0.85), 0 0 24px rgba(168, 85, 247, 0.45);
+}
+
+.neon-border-pulse {
+  animation: neonBorderPulse 2.4s infinite alternate ease-in-out;
+}
+
+@keyframes neonBorderPulse {
+  0% {
+    border-color: rgba(0, 240, 255, 0.45);
+    box-shadow: 0 0 25px rgba(0, 240, 255, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.08);
+  }
+  100% {
+    border-color: #00F0FF;
+    box-shadow: 0 0 45px rgba(0, 240, 255, 0.55), inset 0 0 25px rgba(0, 240, 255, 0.22);
+  }
+}
+
+.neon-pill-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.neon-pill-btn:hover {
+  border-color: #00F0FF !important;
+  box-shadow: 0 0 16px rgba(0, 240, 255, 0.5) !important;
+  transform: translateY(-1px);
+}
+
+.neon-duration-badge {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 240, 255, 0.4);
+  color: #00F0FF;
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.neon-duration-badge.is-loading {
+  animation: pulseDuration 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseDuration {
+  0%, 100% {
+    opacity: 0.6;
+    border-color: rgba(0, 240, 255, 0.25);
+  }
+  50% {
+    opacity: 1;
+    border-color: #00F0FF;
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.5);
+  }
+}
+

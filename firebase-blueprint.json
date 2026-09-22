@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "Episode": {
+      "title": "Episode",
+      "description": "Published media episode in Show Verse",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "seriesTitle": { "type": "string" },
+        "category": { "type": "string" },
+        "season": { "type": "number" },
+        "episode": { "type": "number" },
+        "videoUrl": { "type": "string" },
+        "image": { "type": "string" },
+        "uploadedAt": { "type": "string" }
+      },
+      "required": ["title", "videoUrl"]
+    },
+    "WatchLaterItem": {
+      "title": "WatchLaterItem",
+      "description": "A series saved to a user's personal list in Firestore for quick access",
+      "type": "object",
+      "properties": {
+        "showKey": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "image": { "type": "string" },
+        "rating": { "type": "string" },
+        "views": { "type": "number" },
+        "episodesCount": { "type": "number" },
+        "description": { "type": "string" },
+        "userId": { "type": "string" },
+        "savedAt": { "type": "string" }
+      },
+      "required": ["showKey", "title", "userId"]
+    },
+    "EpisodeComment": {
+      "title": "EpisodeComment",
+      "description": "User discussion comments on an episode or series in Show Verse",
+      "type": "object",
+      "properties": {
+        "showKey": { "type": "string" },
+        "seriesTitle": { "type": "string" },
+        "seasonNumber": { "type": "number" },
+        "episodeNumber": { "type": "number" },
+        "content": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "isSpoiler": { "type": "boolean" },
+        "likes": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["showKey", "episodeNumber", "content"]
+    }
+  },
+  "firestore": {
+    "/showverse_episodes/{episodeId}": {
+      "schema": "Episode",
+      "description": "Published episodes collection"
+    },
+    "/users/{userId}/watch_later/{showId}": {
+      "schema": "WatchLaterItem",
+      "description": "User's personal list of saved series in Firestore"
+    },
+    "/showverse_comments/{commentId}": {
+      "schema": "EpisodeComment",
+      "description": "Episode and series comments discussion"
+    }
+  }
+}
