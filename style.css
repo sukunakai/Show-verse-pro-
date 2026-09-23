@@ -1,6 +1,50 @@
 /* ========================================================
-   SHOW VERSE - MODERN VIDEO PLAYER & CONTROLS STYLES
+   SHOW VERSE - FULL NATIVE APP & 120 FPS FLUID ENGINE
    ======================================================== */
+
+:root {
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  text-rendering: optimizeLegibility;
+  color-scheme: dark;
+}
+
+html, body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+}
+
+/* Allow text selection in search and inputs */
+input, textarea, [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* 120 FPS GPU Accelerated Scroll Containers */
+.category-slider-row, 
+.overflow-x-auto, 
+.overflow-y-auto, 
+#homeView, 
+#meModal, 
+#searchModal, 
+#watchLaterModalList {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: contain;
+  transform: translate3d(0, 0, 0);
+  will-change: scroll-position;
+}
+
+/* Native Tap Micro-Interactions (Zero 300ms Delay) */
+button, a, [role="button"], .cursor-pointer {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 
 /* High z-index hierarchy for video player modal */
 #playerModal {

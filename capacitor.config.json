@@ -1,5 +1,17 @@
 {
   "appId": "com.showverse.app",
   "appName": "ShowVerse",
-  "webDir": "dist"
+  "webDir": "dist",
+  "backgroundColor": "#060913",
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#060913",
+    "captureInput": true
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  }
 }
+

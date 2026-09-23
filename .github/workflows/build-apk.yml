@@ -51,9 +51,10 @@ jobs:
           fi
           npx cap sync android
 
-      - name: Apply Custom ShowVerse App Icons
+      - name: Apply Custom ShowVerse App Icons & Native 120 FPS Optimizations
         run: |
           node scripts/generate-icons.js
+          node scripts/native-optimize.js
 
       - name: Make Gradlew Executable
         run: chmod +x android/gradlew
