@@ -200,4 +200,30 @@ if (fs.existsSync(androidResDir)) {
 `;
   fs.writeFileSync(path.join(valuesDir, 'ic_launcher_background.xml'), bgXml);
   console.log('Updated ic_launcher_background.xml with dark background');
+
+  // Generate Native Splash Screen drawables
+  const splashDirs = [
+    'drawable',
+    'drawable-port-mdpi',
+    'drawable-port-hdpi',
+    'drawable-port-xhdpi',
+    'drawable-port-xxhdpi',
+    'drawable-port-xxxhdpi',
+    'drawable-land-mdpi',
+    'drawable-land-hdpi',
+    'drawable-land-xhdpi',
+    'drawable-land-xxhdpi',
+    'drawable-land-xxxhdpi'
+  ];
+
+  const splashBuf = createPNG(480, 480, (x, y, w, h) => getShowVersePixel(x, y, w, h, true));
+  splashDirs.forEach(d => {
+    const dirPath = path.join(androidResDir, d);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+    }
+    fs.writeFileSync(path.join(dirPath, 'splash.png'), splashBuf);
+  });
+  console.log('Generated Native Splash drawables across all densities');
 }
+

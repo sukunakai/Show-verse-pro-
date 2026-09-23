@@ -1,169 +1,159 @@
-// nativeApp.js - Full Native App Engine & 120 FPS Performance Adapter
+// nativeApp.js - Full Native Android Controller for ShowVerse
 import { App } from '@capacitor/app';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 
-let lastBackPressTime = 0;
+let lastBackPressedTime = 0;
+let isNativePlatform = false;
 
-/**
- * Trigger subtle native haptic vibration tick
- */
-export async function triggerNativeHaptic(style = ImpactStyle.Light) {
+export function triggerNativeHaptic(style = ImpactStyle.Light) {
   try {
-    if (window.Capacitor?.isNativePlatform()) {
-      await Haptics.impact({ style });
+    if (isNativePlatform) {
+      Haptics.impact({ style });
+    } else if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(12);
     }
-  } catch (_) {}
+  } catch (e) {}
 }
 
-/**
- * Configure native Android Status Bar, Splash Screen, and Hardware Back Button
- */
-export function initNativeApp() {
+export function initNativeAndroidEngine() {
   if (typeof window === 'undefined') return;
 
-  const isNative = Boolean(window.Capacitor?.isNativePlatform && window.Capacitor.isNativePlatform());
+  isNativePlatform = Boolean(window.Capacitor && window.Capacitor.isNativePlatform());
 
-  // 1. Setup Status Bar & Splash Screen
-  if (isNative) {
+  // 1. Suppress all web browser behaviors (Zero Web App feel)
+  window.addEventListener('contextmenu', (e) => {
+    // Only allow context menu inside text inputs
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
+      return;
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  window.addEventListener('dragstart', (e) => {
+    e.preventDefault();
+  }, { passive: false });
+
+  // 2. Configure Native Android Status Bar & Splash Screen
+  if (isNativePlatform) {
     try {
       StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
       StatusBar.setBackgroundColor({ color: '#060913' }).catch(() => {});
       StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
-    } catch (_) {}
+    } catch (e) {}
 
-    try {
-      setTimeout(() => {
+    // Hide splash screen smoothly after app is ready
+    setTimeout(() => {
+      try {
         SplashScreen.hide({ fadeOutDuration: 300 }).catch(() => {});
-      }, 500);
-    } catch (_) {}
+      } catch (e) {}
+    }, 400);
 
-    // 2. Android Hardware Back Button Interception (Full Native Behavior)
-    try {
-      App.addListener('backButton', ({ canGoBack }) => {
-        // Priority 1: Main Video Player
-        const playerModal = document.getElementById('playerModal');
-        if (playerModal && !playerModal.classList.contains('hidden')) {
-          if (typeof window.closePlayer === 'function') {
-            window.closePlayer();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
-        }
+    // 3. Native Android Hardware / Gesture Back Button Interceptor
+    App.addListener('backButton', ({ canGoBack }) => {
+      triggerNativeHaptic(ImpactStyle.Light);
 
-        // Priority 2: Custom Show Player Page
-        const showPlayerPage = document.getElementById('showPlayerPage');
-        if (showPlayerPage && !showPlayerPage.classList.contains('hidden')) {
-          if (typeof window.handlePlayerBack === 'function') {
-            window.handlePlayerBack();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check if Player Modal is open
+      const playerModal = document.getElementById('playerModal');
+      if (playerModal && !playerModal.classList.contains('hidden')) {
+        if (typeof window.closePlayer === 'function') {
+          window.closePlayer();
+          return;
         }
+      }
 
-        // Priority 3: Search View / Modal
-        const searchModal = document.getElementById('searchModal');
-        if (searchModal && !searchModal.classList.contains('hidden')) {
-          if (typeof window.closeSearchModal === 'function') {
-            window.closeSearchModal();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check if Dedicated Player Page is open
+      const showPlayerPage = document.getElementById('showPlayerPage');
+      if (showPlayerPage && !showPlayerPage.classList.contains('hidden')) {
+        if (typeof window.handlePlayerBack === 'function') {
+          window.handlePlayerBack();
+          return;
         }
+      }
 
-        // Priority 4: Me / Profile View
-        const meModal = document.getElementById('meModal');
-        if (meModal && !meModal.classList.contains('hidden')) {
-          if (typeof window.closeMeModal === 'function') {
-            window.closeMeModal();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check Search Modal
+      const searchModal = document.getElementById('searchModal');
+      if (searchModal && !searchModal.classList.contains('hidden')) {
+        if (typeof window.closeSearchModal === 'function') {
+          window.closeSearchModal();
+          return;
         }
+      }
 
-        // Priority 5: Watch Later Modal
-        const watchLaterModal = document.getElementById('watchLaterModal');
-        if (watchLaterModal && !watchLaterModal.classList.contains('hidden')) {
-          if (typeof window.closeWatchLaterModal === 'function') {
-            window.closeWatchLaterModal();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check Me (Profile) Modal
+      const meModal = document.getElementById('meModal');
+      if (meModal && !meModal.classList.contains('hidden')) {
+        if (typeof window.closeMeModal === 'function') {
+          window.closeMeModal();
+          return;
         }
+      }
 
-        // Priority 6: Creator Studio Modal
-        const creatorStudioModal = document.getElementById('creatorStudioModal');
-        if (creatorStudioModal && !creatorStudioModal.classList.contains('hidden')) {
-          if (typeof window.closeCreatorStudio === 'function') {
-            window.closeCreatorStudio();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check Watch Later Modal
+      const watchLaterModal = document.getElementById('watchLaterModal');
+      if (watchLaterModal && !watchLaterModal.classList.contains('hidden')) {
+        if (typeof window.closeWatchLaterModal === 'function') {
+          window.closeWatchLaterModal();
+          return;
         }
+      }
 
-        // Priority 7: Downloads Modal
-        const downloadsModal = document.getElementById('downloadsModal');
-        if (downloadsModal && !downloadsModal.classList.contains('hidden')) {
-          if (typeof window.closeDownloadsModal === 'function') {
-            window.closeDownloadsModal();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check Downloads Modal
+      const downloadsModal = document.getElementById('downloadsModal');
+      if (downloadsModal && !downloadsModal.classList.contains('hidden')) {
+        if (typeof window.closeDownloadsModal === 'function') {
+          window.closeDownloadsModal();
+          return;
         }
+      }
 
-        // Priority 8: Category View (Go back to Explore Home)
-        const dedicatedCategoryView = document.getElementById('dedicatedCategoryView');
-        if (dedicatedCategoryView && !dedicatedCategoryView.classList.contains('hidden')) {
-          if (typeof window.navigateExplore === 'function') {
-            window.navigateExplore();
-            triggerNativeHaptic(ImpactStyle.Light);
-            return;
-          }
+      // Check Creator Studio Modal
+      const creatorStudioModal = document.getElementById('creatorStudioModal');
+      if (creatorStudioModal && !creatorStudioModal.classList.contains('hidden')) {
+        if (typeof window.closeCreatorStudio === 'function') {
+          window.closeCreatorStudio();
+          return;
         }
+      }
 
-        // Priority 9: Double Back Press to Exit App
-        const now = Date.now();
-        if (now - lastBackPressTime < 2000) {
-          App.exitApp();
-        } else {
-          lastBackPressTime = now;
-          if (typeof window.showToast === 'function') {
-            window.showToast("Press back again to exit ShowVerse");
-          }
-          triggerNativeHaptic(ImpactStyle.Light);
+      // Check Dedicated Category View
+      const dedicatedCategoryView = document.getElementById('dedicatedCategoryView');
+      if (dedicatedCategoryView && !dedicatedCategoryView.classList.contains('hidden')) {
+        if (typeof window.navigateExplore === 'function') {
+          window.navigateExplore();
+          return;
         }
-      });
-    } catch (e) {
-      console.warn("Back button handler registration note:", e);
-    }
+      }
+
+      // At Root / Home screen: Double-tap back button to exit
+      const currentTime = Date.now();
+      if (currentTime - lastBackPressedTime < 2000) {
+        App.exitApp();
+      } else {
+        lastBackPressedTime = currentTime;
+        if (typeof window.showToast === 'function') {
+          window.showToast("Press back again to exit");
+        }
+      }
+    });
   }
 
-  // 3. 120 FPS Interaction Tuning
-  tune120FpsPerformance();
-}
-
-/**
- * 120 FPS High Refresh Rate & Low-Latency Interaction Tuning
- */
-function tune120FpsPerformance() {
-  // Prevent context menus on long press for a 100% native app feel
-  document.addEventListener('contextmenu', (e) => {
-    // Allow inputs to still show context menu for paste/copy
-    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-      e.preventDefault();
+  // 4. Attach native haptics to all interactive elements
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('button, a, [role="button"], .cursor-pointer, .nav-tab');
+    if (target) {
+      triggerNativeHaptic(ImpactStyle.Light);
     }
-  }, { passive: false });
-
-  // Passive touch event listener for instantaneous responsiveness without scroll-blocking
-  window.addEventListener('touchstart', () => {}, { passive: true });
+  }, { passive: true });
 }
 
-// Auto-initialize when DOM is ready
-if (typeof document !== 'undefined') {
+// Auto-initialize when script loads
+if (typeof window !== 'undefined') {
+  window.triggerNativeHaptic = triggerNativeHaptic;
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initNativeApp);
+    document.addEventListener('DOMContentLoaded', initNativeAndroidEngine);
   } else {
-    initNativeApp();
+    initNativeAndroidEngine();
   }
 }
