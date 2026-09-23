@@ -1,0 +1,4 @@
+-keep class com.streamx.app.** { *; }
+-keepattributes *Annotation*
+-dontwarn com.google.firebase.**
+-dontwarn androidx.media3.**

@@ -22,15 +22,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Gradle Cache
-        uses: actions/cache@v4
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          gradle-version: '8.10.2'
+          cache-read-only: false
 
       - name: Decode Google Services JSON
         env:
@@ -41,9 +37,39 @@ jobs:
             echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/google-services.json
             echo "google-services.json decoded successfully in app/"
           else
-            echo "WARNING: GOOGLE_SERVICES_JSON secret not found. Using default schema configuration."
+            echo "WARNING: GOOGLE_SERVICES_JSON secret not found. Ensuring schema configuration exists."
             if [ ! -f "app/google-services.json" ]; then
-              echo '{"project_info":{"project_number":"123","project_id":"streamx-app","storage_bucket":"streamx.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123:android:123","android_client_info":{"package_name":"com.streamx.app"}},"api_key":[{"current_key":"placeholder"}]}]}' > app/google-services.json
+              cat << 'EOF' > app/google-services.json
+{
+  "project_info": {
+    "project_number": "123456789012",
+    "project_id": "streamx-app",
+    "storage_bucket": "streamx-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+        "android_client_info": {
+          "package_name": "com.streamx.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_StreamX_BuildValidation_Key12345"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
+EOF
             fi
           fi
 
@@ -52,11 +78,7 @@ jobs:
 
       - name: Build Debug & Release APK
         run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleDebug assembleRelease --no-daemon --stacktrace
-          else
-            gradle assembleDebug assembleRelease --no-daemon --stacktrace
-          fi
+          gradle assembleDebug assembleRelease --no-daemon --stacktrace
 
       - name: Sign Release APK
         run: |

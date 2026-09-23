@@ -149,10 +149,9 @@ fun HomeScreen(
                                         containerColor = Color(0xFF0E1626),
                                         labelColor = Color(0xFFCBD5E1)
                                     ),
-                                    border = FilterChipDefaults.filterChipBorder(
-                                        borderColor = if (isSelected) Color(0xFF00F0FF) else Color(0xFF1E293B),
-                                        enabled = true,
-                                        selected = isSelected
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (isSelected) Color(0xFF00F0FF) else Color(0xFF1E293B)
                                     )
                                 )
                             }
